@@ -6,7 +6,8 @@ authorization and Member 360 demonstration for the October SE Build.
 Next.js App Router + TypeScript + CopilotKit presentation/runtime connects to a
 separate Python Microsoft Agent Framework service through its genuine AG-UI
 adapter. SQLite owns cases, versioned briefs, human decisions, local drafts and
-audit history. Neither chat nor streamed state can record a clinical decision.
+audit history, operational routing and team tasks. Neither chat nor streamed state
+can record a clinical decision.
 
 ## Run locally (no cloud account or model key needed)
 
@@ -50,14 +51,19 @@ capability layer independently checks role and employer/case access.
 ## Demonstration path
 
 1. Select **Clinical reviewer / Employer A** and open the workspace.
-2. Select `SYN-CASE-002` (incomplete). Run intake. The missing/low-confidence
+   Workload cards show actual authorized records, not fabricated live metrics.
+   Search by case, fictional member name or member identifier; combine status,
+   priority and ownership filters and sort by target, age or priority.
+2. Select `SYN-CASE-002` (incomplete). The **Overview** checklist exposes the
+   intake gap. Open **Intake**, then run intake. The missing/low-confidence
    prescriber is flagged; an editable doctor-office information draft is prepared,
    not sent. Verify the source field, enter a synthetic value and confirm the
    verified fields. A form edit invalidates any previous brief.
-3. Select `SYN-CASE-001` (complete). Run intake, then prepare evidence. Expand
+3. Select `SYN-CASE-001` (complete). Run intake, then open **Evidence** and
+   prepare evidence. Expand
    citations to inspect original fictional plan, form, claims, criteria and public
    fixture passages with their versions/timestamps.
-4. Read the matrix, choose approve, decline or request more information, enter a
+4. Read the matrix, open **Decision**, choose approve, decline or request more information, enter a
    rationale and explicitly confirm. Record **your** decision. Reload to see the
    durable decision, reviewer identity, evidence version and audit history.
 5. Switch to **Contact centre / Employer A**. See only public status and ownership,
@@ -70,6 +76,50 @@ capability layer independently checks role and employer/case access.
    "Current status". Text and sanitized read-only tool lifecycles stream through
    CopilotKit -> Python's real MAF/AG-UI bridge. Synthetic mode is deterministic,
    clearly labeled, and never claims a model was called.
+9. In **Overview**, save a reviewer owner or operational priority. Only the same
+   employer's review team is allowed. Record versions and audit events advance;
+   clinical outcomes do not change. Decided cases cannot be rerouted.
+10. Inspect **Documents** for the actual structured form, plan passage, matching
+    criteria version/expiry and claim references. A source gap is not inferred away.
+    Human form verification advances the structured form's revision and invalidates
+    the current brief; earlier evidence versions remain preserved.
+11. Open **Tasks** to create a typed team handoff, start it, complete it or reopen it.
+    The **Team tasks** board opens the corresponding authorized case. Contact-centre
+    users receive only member-follow-up tasks, not clinical task titles or details.
+    Task completion is explicit and independent of intake checks or decisions.
+12. In **Status**, run a streaming status check, edit/confirm a local draft and
+    inspect **your persona's** saved drafts. No external send occurs. **Activity**
+    shows persisted, role-filtered events; reviewers also see the action's actor.
+
+### Operational dashboard semantics
+
+The local dataset has **12 fictional members/cases across two fictional employers**:
+Northstar Design Group and Harbour & Pine Co. Original cases 001-005 retain their
+guide scenarios; additional cases make queue and handoff work meaningful. Six cases
+belong to each group; neither group can search or retrieve the other's records.
+Contact-centre queue results contain case IDs and operational status, not member
+names, clinical fields, claims or source-gap flags.
+
+All four KPI cards are computed server-side over the entire authorized group,
+independently of the current queue filters. Active means not approved/declined;
+requests for information remain active. Ready for review means an actual saved
+`review_ready` state, not an implied clinical recommendation. Open-task counts
+respect task-role visibility. The snapshot time is explicit; **Refresh data**
+reloads the durable store. This is not a real-time insurer feed.
+
+Received dates, priorities, intake channels and team ownership are synthetic local
+fixtures. Internal service targets are **24 hours for priority / 72 hours for
+standard**, measured from receipt. “Past service target” applies only to active
+cases; these are neither promised clinical deadlines nor coverage decisions.
+Dates are established once and remain durable across restarts. New handoffs have
+their own 24-hour task due date; rerouting a case does not silently rewrite tasks.
+Tasks are fixed, role-safe templates rather than arbitrary shared clinical notes.
+An existing open task of the same kind returns an explicit duplicate error.
+
+The dashboard supplies useful empty, loading and structured error states, native
+keyboard-operable controls and a responsive queue. No upload, calendar connector,
+provider messaging, payment, integration-health indicator or pretend live trend
+is presented as a working feature.
 
 Repeated seeding never overwrites saved case state. To start a fresh disposable
 dataset, stop the demo and select a **new** database path:
@@ -83,7 +133,10 @@ $env:BENEFITS_DB = "data\demo-second-run.db"
 
 | Requirement | Local implementation |
 |---|---|
-| Five members / two employers | Five original structured synthetic forms, claims and scenarios; two versioned plans and three criteria sets in `service/catalog.py` |
+| At least five members / two employers | Twelve original structured synthetic forms, claims and scenarios; two versioned plans and three criteria sets in `service/catalog.py` |
+| Operations dashboard | Authorized server-side queue search/filter/sort; ownership, priority, age and synthetic targets; four record-derived KPI cards |
+| Case context & source register | Intake completeness, conflict/source-gap visibility, actual fixture passages and revisions; role-safe overview and section navigation |
+| Tasks & handoffs | Durable typed team tasks, role-specific visibility, duplicate guard, explicit lifecycle, optimistic versions and metadata-only audit events |
 | Intake | Structured fixture extraction, confidence handling, required fields, source navigation, verified edit and member-match guards; **not PDF OCR** |
 | Evidence | Cited prior-therapy matrix, versioned briefs, conflicts, source gaps and stale-policy escalation |
 | Orchestration | Deterministic intent routing plus bounded specialist capabilities; unsupported intent requires clarification |
@@ -95,7 +148,7 @@ $env:BENEFITS_DB = "data\demo-second-run.db"
 | Typed contracts | Pydantic validated forms, member/claims, criteria, eligibility, briefs, decisions and domain activities; Zod activity allowlist on the client |
 | Streaming | Real MAF AG-UI text/tool bridge plus versioned workflow SSE activities, cancellation, safe errors and explicit incomplete-run handling |
 | Communications | Explicitly confirmed **local outbox only**; no external connector exists |
-| Persistence | Transactional SQLite cases, evidence, decisions, metadata-only audits and confirmed drafts; no chat persistence |
+| Persistence | Transactional SQLite cases, evidence, decisions, routing, tasks, metadata-only audits and actor-scoped confirmed drafts; no chat persistence |
 
 Structured workflow actions deliberately remain separate from free-form chat.
 Chat has no case-write, decision, payment, arbitrary URL or external-send tools.
@@ -148,11 +201,30 @@ $env:BENEFITS_TEST_URL = "http://127.0.0.1:3000"
 These six HTTP checks are skipped when the URL is unset; the backend suite does
 not pretend that an in-process test proves a working Next.js runtime.
 
+For repeatable browser acceptance checks against the running demo:
+
+```powershell
+npx playwright install chromium
+$env:BENEFITS_TEST_URL = "http://127.0.0.1:3020" # use your launcher's actual port
+npm run test:browser
+```
+
+These checks use the real UI for filters, sorting, routing, task transitions,
+source navigation, role-safe status streaming, renewal navigation, employer
+suppression, keyboard interaction and mobile geometry. They intentionally make
+local operational writes on case 006, restore its owner/task state, and leave the
+corresponding audit history. Use a disposable demo DB for repeatable test runs;
+the browser checks never record a clinical decision. Optional
+`BENEFITS_SCREENSHOT_DIR` saves desktop/mobile captures in an existing local folder;
+otherwise that capture-only check is skipped. No screenshot is fabricated.
+
 Tests exercise the actual installed MAF bridge, all clinical outcomes, role and
 employer isolation, public-query privacy, uncertain extraction, claims conflicts,
 missing/stale criteria, version conflicts, idempotency, form invalidation, durable
 reseed, cancellation, streamed-state rejection, prompt injection as data and
-confirmed local drafts. No test calls a paid model or cloud service.
+confirmed local drafts, operational filtering/counts, task role privacy,
+cross-case task binding, owner validation, stale task writes and additive reseed
+preservation. No test calls a paid model or cloud service.
 
 Frontend exact versions are in `package.json`/`package-lock.json`; Python direct
 pins are in `requirements.txt` and the full tested resolution is in
@@ -190,7 +262,11 @@ checked by TypeScript/build, not copied blindly from the implementation guide.
   `BENEFITS_ENABLE_EMPLOYER` or `BENEFITS_ENABLE_ACTIVITIES` to `0` to disable a
   capability/activity surface. Defaults are enabled; relevant APIs enforce gates.
 - **Data:** SQLite files are ignored by Git. Back up the DB before changing a
-  running demo version. No migration/reopen/retention tooling is supplied.
+  running demo version. Startup additively creates operational/task tables and
+  missing fixture cases without replacing saved decisions, verified fields,
+  evidence history or completed tasks. Only original placeholder member names are
+  replaced with fictional display names. This is a local-demo schema upgrade,
+  not production migration/reopen/retention tooling.
 - **Rollback:** Stop both processes and run the previous Git revision against a
   separately copied database; never silently roll back a recorded human decision.
 - **Incident handling:** Stop the demo, preserve the DB locally, identify the

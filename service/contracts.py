@@ -143,3 +143,16 @@ class CriteriaLookup(Contract):
     version: str | None
     passages: list[Source]
     gap: str | None
+
+
+class AssignmentInput(CaseAction):
+    owner: str = Field(max_length=40)
+    priority: Literal["standard", "priority"]
+
+
+class TaskInput(Contract):
+    kind: Literal["verify_form", "resolve_evidence", "member_follow_up", "renewal_review"]
+
+
+class TaskUpdate(CaseAction):
+    state: Literal["open", "in_progress", "done"]

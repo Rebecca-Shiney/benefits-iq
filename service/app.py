@@ -7,15 +7,16 @@ import secrets
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from time import monotonic
+from typing import Literal
 
 from agent_framework_ag_ui import AgentFrameworkAgent, add_agent_framework_fastapi_endpoint
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from . import domain
+from . import domain, operations
 from .agents import ConfiguredModelOrchestrator, SyntheticOrchestrator, request_context
-from .contracts import Activity, DecisionInput, DraftInput, FormInput, PublicQuery, RunRequest
+from .contracts import Activity, AssignmentInput, DecisionInput, DraftInput, FormInput, PublicQuery, RunRequest, TaskInput, TaskUpdate
 from .store import audit, connection, initialize, now
 
 
@@ -95,6 +96,36 @@ def session(identity=Depends(authenticate)):
 @app.get("/api/cases")
 def queue(identity=Depends(authenticate)):
     return domain.queue(identity)
+
+
+@app.get("/api/workbench")
+def workbench(search: str = Query("", max_length=100),
+              state: Literal["all", "received", "intake_checked", "intake_incomplete", "review_ready", "approved", "declined", "information_requested"] = "all",
+              priority: Literal["all", "standard", "priority"] = "all",
+              owner: Literal["all", "mine", "unassigned"] = "all",
+              sort: Literal["target", "oldest", "newest", "priority"] = "target",
+              identity=Depends(authenticate)):
+    return operations.workbench(identity, search, state, priority, owner, sort)
+
+
+@app.get("/api/cases/{case_id}/operations")
+def case_operations(case_id: str, identity=Depends(authenticate)):
+    return operations.detail(identity, case_id)
+
+
+@app.post("/api/cases/{case_id}/assignment")
+def assignment(case_id: str, body: AssignmentInput, identity=Depends(authenticate)):
+    return operations.assign(identity, case_id, body)
+
+
+@app.post("/api/cases/{case_id}/tasks")
+def create_task(case_id: str, body: TaskInput, identity=Depends(authenticate)):
+    return operations.create_task(identity, case_id, body)
+
+
+@app.post("/api/cases/{case_id}/tasks/{task_id}")
+def update_task(case_id: str, task_id: str, body: TaskUpdate, identity=Depends(authenticate)):
+    return operations.update_task(identity, case_id, task_id, body)
 
 
 @app.get("/api/cases/{case_id}")

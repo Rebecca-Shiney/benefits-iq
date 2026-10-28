@@ -20,7 +20,7 @@ export type Case = {
   member360?: { name: string; plan: string; coverage: string; fields: Record<string, Field>; claims: { id: string; therapy: string; date: string }[] };
   brief?: Brief | null;
   decision?: { outcome: string; reason: string; reviewer: string; timestamp: string; brief_version: number } | null;
-  timeline: { id: number; event: string; created: string; trace: string }[];
+  timeline: { id: number; event: string; created: string; trace: string; actor?: string }[];
   update_draft: string;
 };
 export type Session = { id: string; role: "reviewer" | "contact" | "employer"; employer: string; mode: string;
@@ -28,6 +28,33 @@ export type Session = { id: string; role: "reviewer" | "contact" | "employer"; e
 export type Aggregate = {
   dataset: string; as_of: string; suppression: string;
   rows: { period: string; members: number | null; specialty_utilizers: number | null; cost: number | null }[];
+};
+export type TaskKind = "verify_form" | "resolve_evidence" | "member_follow_up" | "renewal_review";
+export type Task = {
+  id: string; case_id: string; kind: TaskKind; role: "reviewer" | "contact"; title: string; team: string;
+  state: "open" | "in_progress" | "done"; due: string; version: number; updated: string;
+};
+export type QueueItem = Pick<Case, "id" | "state" | "version" | "expiry"> & {
+  display_name: string; member?: string; received: string; target: string; priority: "standard" | "priority";
+  owner: string; channel: string; request_type: string; age_hours: number;
+  target_state: "closed" | "overdue" | "due_soon" | "on_track"; open_tasks: number;
+  missing_fields?: string[]; conflict?: boolean; source_gap?: boolean;
+};
+export type Employer = { id: string; name: string; plan: string; region: string };
+export type Workbench = {
+  as_of: string; employer: Employer; items: QueueItem[]; matched: number; states: string[];
+  summary: { total: number; active: number; overdue: number; due_soon: number; unassigned: number;
+    review_ready: number; open_tasks: number; intake_gaps?: number; source_gaps?: number; conflicts?: number };
+  tasks: Task[]; target_note: string;
+};
+export type CaseOperations = {
+  case_id: string; employer: Employer; received: string; target: string; priority: "standard" | "priority";
+  owner: string; channel: string; tasks: Task[];
+  outbox: { id: number; text: string; created: string }[];
+  documents?: { id: string; title: string; kind: string; version: string | null; as_of: string | null;
+    status: string; valid_until?: string | null; detail: string }[];
+  missing_fields?: string[]; conflict?: boolean; source_gap?: boolean; verified_fields?: number; field_count?: number;
+  owners?: { id: string; label: string }[];
 };
 
 export async function api<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {

@@ -73,12 +73,14 @@ def case_view(identity: Identity, case_id: str):
         row = load(db, identity, case_id)
         result = status_payload(row)
         timeline = db.execute(
-            "SELECT id,event,created,trace FROM audit WHERE case_id=? ORDER BY id", (case_id,)
+            "SELECT id,event,created,trace,actor FROM audit WHERE case_id=? ORDER BY id", (case_id,)
         ).fetchall()
         # Contact centre receives public status events only, not internal action names.
-        public = {"form_received", "human_decision_saved", "communication_confirmed"}
+        public = {"form_received", "human_decision_saved", "communication_confirmed",
+                  "follow_up_task_created", "follow_up_task_updated"}
         result["timeline"] = [
-            dict(x) for x in timeline if identity.role == "reviewer" or x["event"] in public
+            {k: x[k] for k in x.keys() if k != "actor" or identity.role == "reviewer"}
+            for x in timeline if identity.role == "reviewer" or x["event"] in public
         ]
         result["update_draft"] = result["message"] + " Please contact the support team for the next step. No decision date is promised."
         if identity.role == "reviewer":
@@ -247,6 +249,7 @@ def verify_form(identity: Identity, case_id: str, request: FormInput):
             fail(409, "DECIDED_CASE_IMMUTABLE")
         payload = json.loads(row["payload"])
         payload["fields"] = {k: v.model_dump() for k, v in request.fields.items()}
+        payload["form_version"] = f"form-verified-case-v{row['version'] + 1}"
         db.execute("UPDATE cases SET payload=?,brief=NULL,state='received',version=version+1 WHERE id=?",
                    (json.dumps(payload), case_id))
         audit(db, case_id, identity.id, "form_human_verified", secrets.token_hex(12))
@@ -284,7 +287,7 @@ def record_human_decision(identity: Identity, case_id: str, request: DecisionInp
 def employer_aggregate(identity: Identity, employer: str):
     if identity.role != "employer" or identity.employer != employer:
         fail(403, "EMPLOYER_SCOPE_DENIED")
-    # Separate fictional portfolio; never derive cells from the five workflow members.
+    # Separate fictional portfolio; never derive cells from the workflow members.
     return {"employer": employer, "dataset": "separate-synthetic-portfolio-v1", "as_of": "2026-10-01",
             "minimum_cell": 10, "rows": [
                 {"period": "2026 Q2", "members": 160 if employer.endswith("A") else 140, "specialty_utilizers": 24, "cost": 48000},

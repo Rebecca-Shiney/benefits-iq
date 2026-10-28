@@ -48,8 +48,8 @@ def decision_payload(case, **overrides):
 def test_seed_members_plans_and_scenarios(client):
     with connection() as db:
         rows = db.execute("SELECT * FROM cases").fetchall()
-    assert len(rows) == 5
-    assert len({r["member"] for r in rows}) == 5
+    assert len(rows) == 12
+    assert len({r["member"] for r in rows}) == 12
     assert len({r["employer"] for r in rows}) == 2
     assert {"complete", "incomplete", "conflicting", "renewal"}.issubset({r["scenario"] for r in rows})
     assert len({json.loads(r["payload"])["plan"] for r in rows}) == 2
@@ -235,7 +235,7 @@ def test_communications_require_confirmation_and_never_send(client):
 def test_renewal_window_and_portfolio(client):
     assert client.get("/api/renewals", headers=headers()).json() == []
     rows = client.get("/api/renewals?window=30", headers=headers("reviewer-b")).json()
-    assert len(rows) == 1 and rows[0]["id"] == "SYN-CASE-004"
+    assert {row["id"] for row in rows} == {"SYN-CASE-004", "SYN-CASE-012"}
     assert client.get("/api/renewals?window=999", headers=headers("reviewer-b")).status_code == 422
     assert client.get("/api/renewals", headers=headers("contact-a")).status_code == 403
 
