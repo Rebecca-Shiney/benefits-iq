@@ -257,11 +257,14 @@ def test_build_context_requires_agent_definitions_without_including_arbitrary_do
                                             "runtime_principal_id", "tenant_id"]}),
     ("synthetic-setup", {"source_records": 12, "documents": 12, "criteria": 4, "aggregate_cells": 6}),
     ("cloud-acceptance", {"clinical_decision_submitted": False, "workflow_write_exercised": True,
-                          "checks": ["real_model_agui_stream", "chat_read_only",
+                          "checks": ["real_model_agui_stream", "required_case_bound_read_tools", "chat_read_only",
                                      "selected_view_shapes", "direct_upload_send_create_rejection"]}),
 ])
 def test_job_receipt_requires_proof_fields_not_a_status_substring(purpose, receipt):
     assert deploy.valid_receipt(purpose, receipt)
+    if purpose == "cloud-acceptance":
+        assert not deploy.valid_receipt(purpose, {
+            **receipt, "checks": [check for check in receipt["checks"] if check != "required_case_bound_read_tools"]})
     assert not deploy.valid_receipt(purpose, {"status": "looks successful"})
     assert not deploy.valid_receipt(purpose, {})
 

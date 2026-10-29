@@ -476,7 +476,7 @@ def valid_receipt(purpose, receipt):
                      "fresh_document_intelligence"}.issubset(receipt.get("checks", [])))
     return (receipt.get("clinical_decision_submitted") is False
             and type(receipt.get("workflow_write_exercised")) is bool
-            and {"real_model_agui_stream", "chat_read_only", "selected_view_shapes",
+            and {"real_model_agui_stream", "required_case_bound_read_tools", "chat_read_only", "selected_view_shapes",
                  "direct_upload_send_create_rejection"}.issubset(receipt.get("checks", [])))
 
 

@@ -285,6 +285,79 @@ def test_cloud_model_uses_stateless_chat_completions_not_the_responses_endpoint(
     assert "messages" in payload and "input" not in payload
 
 
+@pytest.mark.parametrize("view,question,required", [
+    ("reviewer-a", "Current status", "get_case_status"),
+    ("reviewer-a", "Check intake completeness", "read_intake_completeness"),
+    ("reviewer-a", "Which criteria version applies?", "read_criteria_version"),
+    ("contact-a", "Check intake completeness", "get_case_status"),
+])
+def test_actual_model_sdk_requires_scoped_tool_then_explicit_grounded_result(monkeypatch, view, question, required):
+    import httpx
+    from agent_framework import Message
+    from agent_framework.openai import OpenAIChatCompletionClient
+    from openai import AsyncAzureOpenAI
+    from service import agents, azure_services
+
+    monkeypatch.setenv("BENEFITS_PROFILE", "showcase")
+    monkeypatch.setenv("BENEFITS_MODEL_DEPLOYMENT", "synthetic-test")
+    monkeypatch.setenv("BENEFITS_MODEL_ENDPOINT", "https://synthetic.openai.azure.com")
+    monkeypatch.setattr(azure_services, "credential", lambda: None)
+    calls, requests = [], []
+    expected = {
+        "get_case_status": {"synthetic": True, "public_status": "Waiting for a clinical reviewer."},
+        "read_intake_completeness": {"synthetic": True, "complete": True,
+                                    "missing_or_uncertain_fields": [], "source_version": "synthetic-v1"},
+        "read_criteria_version": {"synthetic": True, "criteria_version": "criteria-v1", "source_gap": None},
+    }
+
+    def read(name, result):
+        def execute(identity, case):
+            calls.append((name, identity.id, case))
+            return result
+        return execute
+
+    monkeypatch.setattr(domain, "case_view", read("get_case_status", {"message": "Waiting for a clinical reviewer."}))
+    monkeypatch.setattr(domain, "extract_authorization_form",
+                        read("read_intake_completeness", {"missing": [], "source_version": "synthetic-v1"}))
+    monkeypatch.setattr(domain, "retrieve_drug_criteria",
+                        read("read_criteria_version", {"version": "criteria-v1", "gap": None}))
+
+    def handle(request):
+        body = json.loads(request.content)
+        requests.append(body)
+        if len(requests) == 1:
+            assert body["tool_choice"] == {"type": "function", "function": {"name": required}}
+            message = {"role": "assistant", "content": None, "tool_calls": [
+                {"id": "scoped-read", "type": "function", "function": {"name": required, "arguments": "{}"}}]}
+        else:
+            assert len(requests) == 2 and body.get("tool_choice") in {None, "auto"}
+            result = next(message for message in body["messages"] if message["role"] == "tool")
+            assert json.loads(result["content"]) == expected[required]
+            message = {"role": "assistant", "content": "Synthetic grounded response"}
+        return httpx.Response(200, json={
+            "id": "chatcmpl-synthetic", "object": "chat.completion", "created": 1, "model": "synthetic-test",
+            "choices": [{"index": 0, "message": message,
+                         "finish_reason": "tool_calls" if len(requests) == 1 else "stop"}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as transport:
+            sdk = AsyncAzureOpenAI(azure_endpoint="https://synthetic.openai.azure.com",
+                                   api_version="2024-10-21", api_key="synthetic-test-not-a-credential",
+                                   http_client=transport)
+            client = OpenAIChatCompletionClient(model="synthetic-test", async_client=sdk)
+            monkeypatch.setattr(agents, "OpenAIChatCompletionClient", lambda **kwargs: client)
+            context = agents.request_context.set((showcase.selected_view(view), "SYN-CASE-001"))
+            try:
+                response = await agents.ConfiguredModelOrchestrator().run([Message("user", question)])
+                assert response.text == "Synthetic grounded response"
+            finally:
+                agents.request_context.reset(context)
+    asyncio.run(run())
+    assert calls == [(required, f"anonymous-demo:{view}", "SYN-CASE-001")]
+    assert len(requests) == 2
+
+
 def test_write_budget_precedes_mutation(public_client, key):
     showcase.reserve("write")
     with store.connection() as db:

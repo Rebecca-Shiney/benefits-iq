@@ -31,6 +31,23 @@ def test_stream_requires_ordered_finish_and_model_text_when_requested():
             acceptance.stream(client, "/chat", {}, require_text=True)
 
 
+@pytest.mark.parametrize("name,finish", [
+    ("get_case_status", "read-1"), ("read_criteria_version", "read-1"),
+    ("get_case_status", "different-read"), ("get_case_status", None),
+])
+def test_stream_requires_matching_named_tool_completion_not_just_model_prose(name, finish):
+    start = {"type": "TOOL_CALL_START", "toolCallName": name, "toolCallId": "read-1"}
+    end = [{"type": "TOOL_CALL_END", "toolCallId": finish}] if finish else []
+    with httpx.Client(base_url=ORIGIN, transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, text=events(START, start, *end, TEXT, FINISH),
+                                          headers={"Content-Type": "text/event-stream"}))) as client:
+        if name == "get_case_status" and finish == "read-1":
+            acceptance.stream(client, "/chat", {}, require_text=True, required_tool="get_case_status")
+        else:
+            with pytest.raises(acceptance.AcceptanceError, match="REQUIRED_READ_TOOL"):
+                acceptance.stream(client, "/chat", {}, require_text=True, required_tool="get_case_status")
+
+
 @pytest.mark.parametrize("payload", [
     events(FINISH), events(START), events(START, {"type": "RUN_ERROR"}, FINISH),
     events(START, FINISH, TEXT), events(START, FINISH, FINISH),
@@ -76,7 +93,10 @@ def test_acceptance_preserves_human_state_and_does_not_repeat_workflow_on_reruns
             question = json.loads(request.content)["messages"][0]["content"]
             if question not in acceptance.OPTIONS["prompts"]:
                 return httpx.Response(422)
-            return httpx.Response(200, text=events(START, TEXT, FINISH),
+            required = "get_case_status" if question == acceptance.OPTIONS["prompts"][0] else "read_intake_completeness"
+            return httpx.Response(200, text=events(
+                START, {"type": "TOOL_CALL_START", "toolCallName": required, "toolCallId": "case-read"},
+                {"type": "TOOL_CALL_END", "toolCallId": "case-read"}, TEXT, FINISH),
                                   headers={"Content-Type": "text/event-stream"})
         if path.endswith("/document"):
             return httpx.Response(200, content=b"%PDF-synthetic-fixture",

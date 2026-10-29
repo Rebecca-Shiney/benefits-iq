@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated and partially executed: approved private-SQL revision. Canadian networking, private DNS/MI SQL, seeding, runtime permissions, fresh Search/OCR and durable intake/evidence writes have succeeded; both applications remain private. The case-creation rejection contract is corrected. Real model streaming exposed an installed SDK Responses/Chat Completions mismatch; the compatible stateless client is now selected and HTTP-contract tested, pending cloud reacceptance. No public URL exists. Inherited policy remains enforced, old resources preserved, and Enterprise governance gated.**
+**Ready for Validation: initial full Canadian private/public integration deployment succeeded from be27ab0, but browser review found insufficient model intake grounding. Frontend was explicitly returned to private ingress; require the matching read-only tool and explicit completeness/source result, then repeat image/private/public/browser gates. Existing private SQL, MI, Search/OCR and real model proofs remain recorded; the stricter application revision is not yet accepted live. No new resource/permission/region scope, policy bypass or deletion is authorized.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -552,8 +552,8 @@ has been performed; checks to date were read-only management/public-doc queries.
 
 | Component | Existing location | Cloud change required |
 |---|---|---|
-| Next.js App Router, first-party chat/proxy | `app`, `components`, `lib` | Container hosting; Entra SPA login/token validation; secretless backend caller |
-| Python MAF/AG-UI and governed APIs | `service` | Internal hosting; independent caller/user checks; real cloud adapters |
+| Next.js App Router, first-party chat/proxy | `app`, `components`, `lib` | Public synthetic selected views and secretless backend caller; Entra user login is future opt-in |
+| Python MAF/AG-UI and governed APIs | `service` | Internal hosting; independent exact MI caller and selected-view checks; real cloud adapters |
 | Transactional workflow store | `service/store.py` | Entra-only SQL adapter preserving atomic decisions, idempotency and audit |
 | Versioned definitions and synthetic sources | `agents`, `skills`, `service/catalog.py`, `service/fixtures.py` | Starter SQL source/document/aggregate seed and criteria index; Enterprise-only OneLake/model integration |
 | Local launcher | `scripts/demo.py` | Preserve explicit local mode; do not treat it as the deployment command |
@@ -1057,6 +1057,38 @@ budget. The local future OpenAI path is unchanged. Privacy-safe provider logs
 now permit only numeric HTTP status and allowlisted error codes through nested
 exceptions, never freeform provider errors or unknown codes. Fresh image tests/
 scans and real regional model acceptance remain required before exposure.
+
+### Initial full cloud rollout and browser-grounding recovery
+
+The full single-entry command completed from `be27ab0` at
+**2026-10-29T17:26:48Z**. API digest
+`sha256:f043a23966a1ff0c0c13b738f4467e6c82514ad46592f4baf3ec98a6c5a2215b`
+and web digest
+`sha256:26b647c433fdc6f98ae1ac9f0e3dfa13cfb743948a8a466f0f06f6c6d6479cde`
+passed actual final-image scans. Fresh MI, SQL, seed and source proofs passed.
+Private acceptance `n-v-biq-benefits-iq-bb2168f95c9d-2g0xbim` and post-public
+acceptance `n-v-biq-benefits-iq-bb2168f95c9d-o0v5m1a` both verified real regional
+model/AG-UI streams, preserved evidence, unchanged human decision, view shapes
+and forbidden direct/proxied operations. Reruns reused earlier saved evidence;
+neither falsely reports a fresh workflow write or a submitted clinical decision.
+ARM independently confirms SQL PNA Disabled/Entra-only and internal API ingress;
+live resource-scoped RBAC contains three AcrPull and five expected data grants.
+
+Public browser checks proved keyboard selected-view entry, contact/employer
+shapes, 390px mobile geometry/no upload input, and real chat cancel/explicit retry.
+However an intake response contradicted the complete authoritative record.
+Public ingress was withdrawn before final publication. Root correction:
+force the appropriate registered case-bound read tool using the installed SDK's
+supported named required-tool mode, which resets for the final response;
+return explicit completeness/missing fields/source version instead of `"[]"`.
+Contact views can require only their public-status tool. No new model capability,
+write permission or data field beyond the minimum synthetic read result is added.
+Actual SDK HTTP/tool tests cover named dispatch, scoped results and reset;
+the stricter live gate must observe matching tool start/end plus real text for
+both status and intake presets, rather than accepting fluent model text alone.
+Tool arguments/results remain filtered from the browser proxy. Model prose is
+advisory and can still be wrong; authoritative case/evidence and human controls
+remain independent. Rebuild/scan and repeat actual private/public/browser checks.
 
 ## 8. Implementation and rerun plan
 

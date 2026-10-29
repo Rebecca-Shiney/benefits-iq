@@ -31,7 +31,7 @@ def expect(response, status=200):
     return response
 
 
-def stream(client, path, body, headers=None, require_text=False):
+def stream(client, path, body, headers=None, require_text=False, required_tool=None):
     events, content = [], bytearray()
     with client.stream("POST", path, json=body, headers=headers) as response:
         expect(response)
@@ -57,6 +57,13 @@ def stream(client, path, body, headers=None, require_text=False):
                                         and isinstance(event.get("delta"), str) and event["delta"].strip()
                                         for event in events))):
         raise AcceptanceError("CLOUD_ACCEPTANCE_STREAM_NOT_SUCCESSFUL")
+    if required_tool:
+        calls = [event for event in events if event.get("type") == "TOOL_CALL_START"
+                 and event.get("toolCallName") == required_tool]
+        if (len(calls) != 1 or not calls[0].get("toolCallId")
+                or not any(event.get("type") == "TOOL_CALL_END"
+                           and event.get("toolCallId") == calls[0]["toolCallId"] for event in events)):
+            raise AcceptanceError("CLOUD_ACCEPTANCE_REQUIRED_READ_TOOL_NOT_COMPLETED")
 
 
 def frontend_checks(client):
@@ -79,9 +86,10 @@ def frontend_checks(client):
     if ((wrote_workflow and saved["version"] <= detail["version"]) or not saved["brief"]
             or not saved["brief"]["criteria_version"] or saved["decision"] != before_decision):
         raise AcceptanceError("CLOUD_WORKFLOW_DURABILITY_OR_HUMAN_BOUNDARY_FAILED")
-    stream(client, "/api/chat", {"messages": [{
-        "id": str(uuid4()), "role": "user", "content": OPTIONS["prompts"][0],
-    }]}, {"X-Benefits-Case": "SYN-CASE-001"}, require_text=True)
+    for prompt, required in zip(OPTIONS["prompts"][:2], ("get_case_status", "read_intake_completeness")):
+        stream(client, "/api/chat", {"messages": [{
+            "id": str(uuid4()), "role": "user", "content": prompt,
+        }]}, {"X-Benefits-Case": "SYN-CASE-001"}, require_text=True, required_tool=required)
     after_chat = expect(client.get("/api/backend/cases/SYN-CASE-001")).json()
     if after_chat["version"] != saved["version"] or after_chat["decision"] != before_decision:
         raise AcceptanceError("CLOUD_CHAT_MUTATED_AUTHORITATIVE_WORKFLOW")
@@ -107,7 +115,7 @@ def frontend_checks(client):
     return {"status": "private_cloud_acceptance_complete", "clinical_decision_submitted": False,
             "workflow_write_exercised": wrote_workflow,
             "checks": ["sql_source_binary_document", "saved_versioned_evidence",
-                       "real_model_agui_stream", "chat_read_only",
+                       "real_model_agui_stream", "required_case_bound_read_tools", "chat_read_only",
                        "selected_view_shapes", "direct_upload_send_create_rejection"]
                       + (["ocr_intake", "durable_workflow_write"] if wrote_workflow else [])}
 

@@ -5,7 +5,7 @@ authorization and Member 360 demonstration for the October SE Build.
 
 Next.js App Router + TypeScript with first-party React chat connects to a
 separate Python Microsoft Agent Framework service through its genuine AG-UI
-adapter. SQLite owns cases, versioned briefs, human decisions, local drafts and
+adapter. SQLite locally, or Azure SQL in the cloud, owns cases, versioned briefs, human decisions, local drafts and
 audit history, operational routing and team tasks. Neither chat nor streamed state
 can record a clinical decision.
 
@@ -19,35 +19,38 @@ standing capacity cost, improve reuse and one-command setup, and retain core
 managed-identity service authentication, constrained demo views, audit and
 explicit human-action controls. Anonymous demo views are not authenticated roles.
 
-**Status: Canadian private networking, secretless SQL access, synthetic seeding
-and fresh Search/OCR proofs have succeeded. Applications exist privately;
-end-to-end acceptance is still in progress. No public application URL exists.**
-Both runtime images passed exact-digest scans, and real managed-identity caller
-validation passed its positive/four-negative proof. SQL/database, Search,
-Document Intelligence and the approved regional model deployment now exist.
-The approved VNet-integrated environment, SQL private endpoint and DNS now exist.
-Actual probes verified private-only SQL resolution, managed-identity login,
-runtime permission boundaries, source documents, governed Search and fresh OCR.
-The first private application acceptance stopped on its incorrect expectation
-of 404 rather than the API's correct 405 rejection of case creation; that test
-contract is corrected, not a bypass of the denial. A subsequent run persisted
-intake/evidence successfully but exposed a model-client protocol mismatch:
-the installed MAF `OpenAIChatClient` uses Responses, not Chat Completions.
-The cloud path now explicitly uses its supported `OpenAIChatCompletionClient`
-with the stable Azure API, unchanged regional model and managed identity.
-Actual SDK HTTP-contract coverage verifies the stateless, bounded request;
-fresh cloud inference verification remains pending. Real model/streaming, remaining
-view/negative checks and browser/public acceptance are not yet claimed complete.
-Existing resources incur charges while held privately.
-The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
-implements the staged cloud entry point; **its full Azure execution is not yet verified**.
-No cloud URL, fabricated
-integration success or healthcare-compliance claim is supplied.
+**Status: initial Canadian private/public integration acceptance passed on
+October 29, 2026; frontend temporarily returned to private ingress during
+browser-discovered chat-grounding correction and reacceptance.**
+Reserved [showcase URL](https://web-biq-benefits-iq-bb2168f95c9d.kindground-2f9b9bf8.canadaeast.azurecontainerapps.io)
+is unavailable during this hold. When enabled, no visitor credentials are
+required. Never enter real personal or health data. Python ingress remains internal.
+
+The full `scripts/deploy.py` entry completed from application commit `be27ab0`,
+including exact-digest runtime image scans, actual web managed-identity
+positive/four-negative proof, private DNS/TLS/MI SQL, preserved synthetic seeding,
+runtime permission boundaries, source PDFs, governed Search and fresh OCR.
+Real Canadian model/MAF/AG-UI streaming passed before and after public frontend
+exposure, alongside view-shape and direct/proxied upload/send/create denials.
+Earlier live execution persisted intake and a cited evidence brief; rerun
+acceptance reused that evidence without rewriting it or submitting a clinical decision.
+The compatible installed `OpenAIChatCompletionClient` resolved the Responses/
+stable Chat Completions protocol mismatch without changing model, region or identity.
+This is actual integration evidence, not a liveness-only or mocked success.
+Browser review subsequently found an intake answer inconsistent with the complete
+case: optional tool use and an ambiguous empty missing-field list were insufficient
+grounding. The corrected showcase requires the matching read-only tool for each
+preset and returns explicit completeness/source fields. Actual installed-SDK tests
+verify named tool dispatch, scoped execution, structured results and the SDK's
+reset to automatic tool choice for the final answer; live reacceptance is pending.
+Model prose is still advisory; authoritative UI/evidence takes precedence.
+The local loopback demo remains available. Paid resources are now running;
+this is still a synthetic showcase, not a production or healthcare-compliance claim.
 
 | Profile | Intended scope | Current implementation status |
 |---|---|---|
 | Local demo | Credential-free synthetic workflow, SQLite, deterministic MAF/AG-UI and explicit demo personas | Working local application; not Entra or cloud services |
-| Showcase (default cloud) | Public selectable synthetic views; real Next.js/Python, regional inference, governed Search, OCR and durable Azure SQL; exact managed-identity backend caller | Anonymous views, finite-input restrictions, signed caller validation and persistent budgets implemented/tested locally; IaC/bootstrap and live cloud proof remain unfinished |
+| Showcase (default cloud) | Public selectable synthetic views; real Next.js/Python, regional inference, governed Search, OCR and durable Azure SQL; exact managed-identity backend caller | Initial MI/data/model/private/public acceptance passed; currently private pending stricter named-read-tool grounding reacceptance |
 | Authenticated Starter (future opt-in) | Entra user roles/employer bindings plus managed-identity service calling | Retained signed-token/MSAL implementation and local tests; user registration/assignments/bootstrap and live verification are not implemented |
 | Enterprise (opt-in) | Actual Fabric/OneLake, aggregate-only employer semantic model, Purview and customer-specific policies | Planned integration profile only; not connected or verified |
 
@@ -183,6 +186,7 @@ than introducing a new storage account or capacity dependency.
 | Standard managed ACR builds, with build-location uncertainty explicitly accepted by the user | No local Linux builder; reduce additional setup and builder cost | Canadian build execution is unverified; this narrow source/image exception does not change Canadian workload-data/inference requirements |
 | User-approved private SQL endpoint/DNS and new Canadian VNet-integrated Consumption environment | Respect the inherited policy disabling public SQL; the existing environment cannot change network type | Approximately US$35-US$50/month additional networking; retain old resources, no exemption or public SQL re-enablement. Private DNS is a non-regional infrastructure name-resolution service, not a Canadian data-store guarantee |
 | Explicit MAF Chat Completions client for the Canadian cloud model | The installed generic-named `OpenAIChatClient` uses Responses and is incompatible with the retained stable Chat Completions API route | Keep genuine MAF tools/streaming and `store: false`; no managed conversation/Responses state, model-region fallback or application secret |
+| Required named read tool for each public chat preset; explicit source/completeness results | Browser review caught a model answer confusing absent chat history/empty missing fields with absent intake | One bounded tool/read round trip before the advisory answer; UI/evidence stays authoritative and model prose can still err |
 | Distroless Node 24 and Azure Linux 3 / Python 3.12 runtime candidates | Remove known High/Critical paths found in the prior Debian runtime candidates without broad vulnerability ignores | Local Python remains 3.11-compatible; actual final images, ODBC/native packages and Python 3.12 behavior still require build/run/scan acceptance |
 
 ### Chat replacement and adding CopilotKit back
@@ -233,7 +237,7 @@ server transcript retention/list/resume; and passing type/build, real HTTP,
 keyboard/accessibility and browser workflows. Replacing the two small chat
 surfaces must not move human decisions into chat or alter operational APIs.
 
-### Implemented preparation versus deployment
+### Implementation and cloud verification
 
 The future authenticated Starter code independently validates signed user and runtime tokens in
 Python, validates user tokens again in Next.js, and uses an in-memory MSAL public
@@ -257,8 +261,9 @@ event loop; cancellation observed before the commit checkpoint rolls back
 pending writes. A commit already begun cannot be undone by closing a stream:
 refresh authoritative state.
 
-These are **local implementation and mock/signed-token test results, not cloud
-integration evidence**. The SQL schema is in `infra/schema.sql`. Prepared image
+The showcase adapters have **actual cloud integration evidence** below; the
+future end-user authenticated profile still has local/signed-token tests only.
+The SQL schema is in `infra/schema.sql`. Image
 definitions are `infra/Dockerfile.web` and `infra/Dockerfile.api`: official
 base-image manifests are digest-pinned, runtime users are non-root, and an
 allowlisted `.dockerignore` excludes local state, credentials and attachments.
@@ -274,15 +279,16 @@ audit. Removing unused system/venv pip and setuptools resolved those findings:
 the replacement API image passed its exact-digest scan and final non-root
 SDK/ODBC assertions. The frontend image also passed, and a real private job
 verified managed-identity issuance plus four wrong-configuration denials.
-Live data/model connections and the application remain acceptance gates.
+Live private SQL, scoped Search, fresh OCR and regional model connections now
+pass application acceptance, not just resource creation.
 Candidate distroless Node 24 and Microsoft Azure Linux 3 Python
 3.12 base scans alone are **not final-image results**. Full image/package and secret
 scanning must precede public exposure; incomplete or wrong-digest scan reports
 fail closed.
 `infra/foundation.bicep`, `infra/data.bicep`, `infra/job.bicep` and
-`infra/hosting.bicep` compile; audience/bootstrap/private-acceptance and runtime
-source probes have local tests; live SQL/Search/OCR/model execution remains
-outstanding. The private identity-proof job has actual Azure execution evidence.
+`infra/hosting.bicep` and `infra/network.bicep` compile and were deployed through
+successful Provider validation/what-if/no-Delete gates. The private identity,
+source and application acceptance jobs have actual Azure execution evidence.
 The source/bootstrap implementation is `service/cloud_seed.py`: it generates
 original deterministic synthetic PDFs, inserts version/hash-checked SQL sources
 and a separate aggregate snapshot, and creates/seeds a governed Search index.
@@ -291,23 +297,45 @@ preserves human edits, decisions and audit. `infra/grant-runtime.sql` prepares
 read-only source permissions and append-only audit/decision/brief writes, not
 broad database reader/writer roles. It uses the documented Azure SQL contained
 principal SID form, with the managed identity's **client ID**, avoiding directory
-lookup grants. These paths are locally tested, **not executed against Azure SQL
-or Search**; live principal/permission and rerun checks remain mandatory.
+lookup grants. Actual Azure SQL login/permissions and Search seeding/reads
+passed; same-environment reruns preserved existing evidence and source hashes.
 `service/identity_probe.py` is the prepared first-stage cloud job command
 (`python -m service.identity_probe`): it requests a token using only the actual
 web managed identity, runs the same signature/claim validator and four negative
-checks, and emits no token. Its unit tests use signed synthetic tokens. It has
-**not** run in Azure and is not evidence that token issuance works yet.
+checks, and emits no token. Its unit tests use signed synthetic tokens; the
+separate real Azure execution proved MI issuance and all four denial paths.
 
 The user explicitly superseded initial reviewer enrollment with a public
 showcase. No initial reviewer or Hira assignment is created or required.
-Neither the unexecuted bootstrap nor `/health` liveness is proof of ready
-cloud connections. The role-less app-only caller path has signed-token tests,
-not live managed-identity issuance proof yet.
+`/health` alone is not proof of ready cloud connections. The role-less app-only
+caller path now has actual MI issuance/signature/claim proof and successful
+independently authorized API calls.
+
+**Deployment evidence (October 29, 2026, completed 17:26:48 UTC):**
+
+| Actual execution | Verified outcome |
+|---|---|
+| `p-biq-benefits-iq-bb2168f95c9d-4ia6pev` | Web MI caller positive proof plus wrong tenant/audience/client/principal denials |
+| `n-q-biq-benefits-iq-bb2168f95c9d-4loqd1v` | Private-only SQL DNS and TLS-verified MI login |
+| `n-s-biq-benefits-iq-bb2168f95c9d-pq11q59` | 17 source records, 12 synthetic PDFs, three criteria and six aggregate cells |
+| `n-r-biq-benefits-iq-bb2168f95c9d-81cnmd4` | Runtime SQL permissions/PDF, live scoped Search and fresh OCR |
+| `n-v-biq-benefits-iq-bb2168f95c9d-2g0xbim` | Private application acceptance including genuine model streaming |
+| `n-v-biq-benefits-iq-bb2168f95c9d-o0v5m1a` | Repeated application acceptance after public frontend exposure |
+
+Both acceptance jobs report no submitted clinical decision and no case mutation
+by chat. On this recovery run, `workflow_write_exercised` is false because the
+earlier real intake/evidence execution already saved the versioned brief.
+They do not falsely count its preservation as a fresh workflow write.
+The receipt name `private_cloud_acceptance_complete` is shared by the same
+internal acceptance harness in both ingress phases; it is not an external-browser result.
+The authoritative non-secret resource IDs, immutable image digests and receipts
+are in ignored `.azure/showcase-benefits-iq.json`; do not commit token caches.
+Accepted API digest: `sha256:f043a23966a1ff0c0c13b738f4467e6c82514ad46592f4baf3ec98a6c5a2215b`.
+Accepted web digest: `sha256:26b647c433fdc6f98ae1ac9f0e3dfa13cfb743948a8a466f0f06f6c6d6479cde`.
 
 **Future collaborator onboarding:** GitHub access and application/clinical
 authorization are separate. The public showcase intentionally grants no
-verified-person identity: Hira, like anyone with the eventual URL, can select demo
+verified-person identity: Hira, like anyone with the URL, can select demo
 views without enrollment. For a future authenticated deployment, verify the
 person's tenant object ID, obtain explicit role/employer approval, assign the
 application role and matching backend binding; neither GitHub sharing nor a name
@@ -453,7 +481,9 @@ have downtime** while dependencies are revalidated. Version/hash-checked seeds
 preserve human decisions/audit, and source probes perform fresh OCR/Search
 without changing cases. Acceptance skips workflow writes when prior evidence
 or a human decision exists. Public acceptance failure attempts to return the
-frontend to private ingress. No cloud upgrade is claimed verified yet.
+frontend to private ingress. Same-environment recovery/rerun has succeeded live;
+later upgrades from an already public release and deliberately injected rollback
+failures have not been separately exercised live.
 
 Setup uses a distinct, non-serving identity with SQL bootstrap administration
 and scoped Search index administration. That privilege is **retained for
@@ -470,8 +500,8 @@ must resolve the SQL hostname only inside the endpoint subnet and connect using
 ODBC managed-identity authentication with certificate validation before seeding.
 Control-plane checks also require an Approved SQL endpoint and Entra-only SQL.
 Runtime-source proof independently repeats private DNS and constrained SQL
-permission checks. These private SQL/source gates have passed live; final
-application/model/public acceptance remains incomplete.
+permission checks. These gates and actual application/model/public acceptance
+have passed live. Python ingress remains internal; SQL public access remains Disabled.
 Other data-service public endpoints retain disabled local/key auth and scoped
 managed-identity authorization; this is not an all-services-private topology.
 
@@ -484,14 +514,21 @@ never launch a competing deployment or automatically delete resources.
 Cloud cleanup must target only the dedicated accelerator resource group and
 recorded app registrations/assignments after explicit destructive-action approval.
 Review the resource list and exported/retained synthetic audit requirements first.
-No cleanup command is supplied until the actual deployment/ownership inventory
-exists. Never delete/resize/resume/pause shared capacity or alter other workspaces,
+For cleanup planning, inventory the dedicated group with
+`az resource list --resource-group rg-biq-benefits-iq-bb2168f95c9d --subscription 85489118-9695-41ac-ba0f-e14ba8837c91 --output table`
+and compare every resource/ownership tag to the retained state, including the
+owned API registration. Obtain separate approval for that exact inventory,
+export required synthetic audit records, then have an authorized operator remove
+only the approved dedicated group and explicitly approved owned registration.
+Do not manually delete the platform-managed `ME_vnet_...` group. No deletion,
+cleanup permission or successful cleanup test is implied by these instructions.
+Never delete/resize/resume/pause shared capacity or alter other workspaces,
 and never run a broad directory/resource cleanup. Local resets use a new DB path,
 not destructive database replacement.
 
 The detailed approval, architecture, current evidence and deployment gates are in
-[`.azure/deployment-plan.md`](.azure/deployment-plan.md). That plan is not a cloud
-deployment report.
+[`.azure/deployment-plan.md`](.azure/deployment-plan.md), including actual execution
+and acceptance receipts rather than only an intended architecture.
 
 ## Run locally (no cloud account or model key needed)
 
@@ -785,17 +822,16 @@ against the installed Python bridge through real proxy/HTTP/browser workflows.
 
 ### External prerequisites deliberately not implemented as fake integrations
 
-Live managed-identity issuance/data-plane connectivity, IaC/bootstrap and cloud
-acceptance remain unverified. Future Entra end-user enrollment, Fabric/OneLake
+The synthetic showcase's MI/data-plane/model/bootstrap acceptance is verified.
+The following are **not implemented or verified production integrations**:
+future Entra end-user enrollment, Fabric/OneLake
 member/claims connectors; Foundry IQ governed retrieval; live public-program
 sources; Purview labeling/retention; Teams/email handoffs; approved external
-communications; Canadian residency/private connectivity validation; multi-user
+communications; customer-specific residency/compliance certification; production
 production storage, migrations, retention/deletion and recovery operations.
 Thread persistence remains disabled until retention/privacy approval.
-Only the dedicated Canadian foundation and owned API audience have been
-created so far; the application and its live data/model integrations are not
-deployed or accepted. The foundation can incur registry/telemetry charges while
-held and is not automatically deleted.
+The deployed Canadian synthetic application/data/model resources and preserved
+original environment incur charges and are not automatically deleted.
 
 The account-manager experience is included, not silently deferred. Renewal is a
 bounded extension, not an automatic clinical renewal. A pre-existing fictional

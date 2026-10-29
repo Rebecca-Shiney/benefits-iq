@@ -93,18 +93,21 @@ def model_agent():
         domain.fail(503, "LIVE_MODEL_NOT_CONFIGURED")
     identity, case_id = request_context.get()
     # Bind context at construction; a model cannot choose another member or case.
-    async def get_case_status() -> str:
+    async def get_case_status() -> dict:
         """Return the permitted case's public status, without clinical detail."""
-        return (await run_blocking(domain.case_view, identity, case_id))["message"]
+        result = await run_blocking(domain.case_view, identity, case_id)
+        return {"synthetic": True, "public_status": result["message"]}
 
-    async def read_intake_completeness() -> str:
-        """Check the current synthetic form. No authoritative state is modified."""
-        return str((await run_blocking(domain.extract_authorization_form, identity, case_id))["missing"])
+    async def read_intake_completeness() -> dict:
+        """Return explicit completeness, missing/uncertain fields and source version; never writes the case."""
+        result = await run_blocking(domain.extract_authorization_form, identity, case_id)
+        return {"synthetic": True, "complete": not result["missing"],
+                "missing_or_uncertain_fields": result["missing"], "source_version": result["source_version"]}
 
-    async def read_criteria_version() -> str:
+    async def read_criteria_version() -> dict:
         """Return the governed synthetic criteria version or explicit source gap."""
         result = await run_blocking(domain.retrieve_drug_criteria, identity, case_id)
-        return result["gap"] or result["version"]
+        return {"synthetic": True, "criteria_version": result["version"], "source_gap": result["gap"]}
 
     tools = [get_case_status]
     if identity.role == "reviewer":
@@ -130,6 +133,10 @@ def model_agent():
         client=client,
         default_options={"store": False, "max_tokens": 500 if showcase() else 1500},
         instructions=prompt + "\nYou have only read-only, case-bound capabilities. Never infer clinical facts. "
+        "Use the returned tool result, not absent conversation history, for every case-specific answer. "
+        "complete=true and an empty missing_or_uncertain_fields list mean required intake fields are present, NOT an empty form. "
+        "A tool failure or missing result means unavailable, never incomplete or complete. "
+        "Do not describe an intake check as a clinical decision. If only public status is available, do not claim intake or criteria facts. "
         "State that all evidence sources are synthetic. Tell the user to use controlled UI actions for intake, evidence saves and human decisions.",
         tools=tools,
     )
@@ -137,4 +144,12 @@ def model_agent():
 
 class ConfiguredModelOrchestrator(SyntheticOrchestrator):
     def run(self, messages=None, *, stream=False, session=None, **kwargs):
-        return model_agent().run(messages, stream=stream)
+        options = {}
+        if showcase():
+            identity, _ = request_context.get()
+            latest = next((message.text for message in reversed(messages or [])
+                           if isinstance(message, Message) and message.role == "user"), "")
+            required = {"intake": "read_intake_completeness", "evidence": "read_criteria_version"}.get(
+                route_intent(latest), "get_case_status") if identity.role == "reviewer" else "get_case_status"
+            options["tool_choice"] = {"mode": "required", "required_function_name": required}
+        return model_agent().run(messages, stream=stream, options=options)
