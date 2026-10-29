@@ -22,7 +22,7 @@ explicit human-action controls. Anonymous demo views are not authenticated roles
 **Status: the Canadian foundation is created; application deployment and live
 integration proof remain incomplete. No public application URL exists.**
 The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
-implements the staged cloud entry point; **its Azure execution is not yet verified**.
+implements the staged cloud entry point; **its full Azure execution is not yet verified**.
 No cloud URL, fabricated
 integration success or healthcare-compliance claim is supplied.
 
@@ -48,6 +48,8 @@ Bicep and the `containerapp` extension, plus a verified
 uncommitted application/build-context changes. It never uploads the working
 directory wholesale: context comes from committed, allowlisted source files,
 with no attachments, databases, `.env`, CLI caches or `.azure` artifacts.
+Named versioned agent definitions are required build inputs; arbitrary Markdown
+notes and uploaded documents are not included.
 
 ```powershell
 az login
@@ -77,6 +79,17 @@ region-pinned builder with separate setup/cost approval. Microsoft's documented
 [dedicated ACR pools](https://learn.microsoft.com/en-us/azure/container-registry/tasks-agent-pools)
 require Premium and are preview-region limited, including Canada Central.
 They are not automatically provisioned.
+
+Image scanning downloads its public vulnerability database before acquiring a
+short-lived registry token through the deployer's existing Azure CLI sign-in.
+That token is passed only in the scanner process environment for the exact
+registry scan, never a command argument, file or environment-state receipt.
+This is not an application client secret or a registry admin password.
+All secret matches and known language-package vulnerabilities block acceptance;
+the OS-package threshold is High/Critical, not a claim of zero OS advisories.
+The API runtime removes unused system/venv pip and setuptools, rather than
+ignoring their bundled dependency findings, and verifies imports/ODBC as its
+non-root runtime user after removal.
 
 Minimum non-secret inputs are subscription and Canadian resource regions.
 Discover tenant/deployer context; generate resource/application IDs and configure
@@ -208,11 +221,14 @@ at build time), enforces cloud mode/tracing-off and formats library failures
 as metadata without raw provider messages or tracebacks. Operational error codes
 and traces remain observable.
 
-Docker is unavailable on the current host, so final application images have
-**not** been built/run or scanned. Candidate distroless Node 24 and Microsoft
-Azure Linux 3 Python 3.12 base scans found no High/Critical issues; these are
-**not final-image results**. Full image/package and secret scanning must precede
-public exposure; incomplete or wrong-digest scan reports fail closed.
+Docker is unavailable on the current host; approved managed builds are being
+used instead. The first complete API image built, but its final-image scan
+found vulnerable bundled Python tooling absent from the application lockfile
+audit. Unused pip/setuptools removal and a clean replacement-image scan remain
+acceptance gates. Candidate distroless Node 24 and Microsoft Azure Linux 3 Python
+3.12 base scans are **not final-image results**. Full image/package and secret
+scanning must precede public exposure; incomplete or wrong-digest scan reports
+fail closed.
 `infra/foundation.bicep`, `infra/data.bicep`, `infra/job.bicep` and
 `infra/hosting.bicep` compile; audience/bootstrap/private-acceptance and runtime
 source probes have local tests, not Azure execution evidence.
@@ -694,7 +710,10 @@ sources; Purview labeling/retention; Teams/email handoffs; approved external
 communications; Canadian residency/private connectivity validation; multi-user
 production storage, migrations, retention/deletion and recovery operations.
 Thread persistence remains disabled until retention/privacy approval.
-No Azure resources were provisioned.
+Only the dedicated Canadian foundation and owned API audience have been
+created so far; the application and its live data/model integrations are not
+deployed or accepted. The foundation can incur registry/telemetry charges while
+held and is not automatically deleted.
 
 The account-manager experience is included, not silently deferred. Renewal is a
 bounded extension, not an automatic clinical renewal. A pre-existing fictional

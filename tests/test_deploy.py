@@ -98,6 +98,31 @@ def test_build_reads_committed_bytes_not_mutable_worktree(monkeypatch):
         deploy.committed_content(Path("service") / "app.py")
 
 
+def test_scanner_uses_only_an_ephemeral_exact_registry_token_after_public_database_update(monkeypatch):
+    instance = Mock()
+    endpoint = "synthetic.azurecr.io"
+    instance.run.return_value = {"loginServer": endpoint, "accessToken": "synthetic-ephemeral-token"}
+    image = endpoint + "/benefits-api@sha256:" + "a" * 64
+    state = {"foundation": {"registryName": "synthetic", "registryEndpoint": endpoint}}
+    execute = Mock(side_effect=["", json.dumps(report(image))])
+    monkeypatch.setattr(deploy, "command", execute)
+    monkeypatch.setenv("TRIVY_PASSWORD", "synthetic-unrelated-credential")
+    assert deploy.scan_image(instance, state, image, "trivy") == []
+    database, scan = execute.call_args_list
+    assert "--download-db-only" in database.args[0]
+    assert "TRIVY_PASSWORD" not in database.kwargs["env"]
+    assert scan.kwargs["env"]["TRIVY_PASSWORD"] == "synthetic-ephemeral-token"
+    assert "--skip-db-update" in scan.args[0] and "--skip-java-db-update" in scan.args[0]
+    assert not any("synthetic-ephemeral-token" in argument for argument in scan.args[0])
+    assert "synthetic-ephemeral-token" not in json.dumps(state)
+    instance.run.return_value["loginServer"] = "another.azurecr.io"
+    execute.reset_mock(side_effect=True)
+    execute.side_effect = [""]
+    with pytest.raises(deploy.DeploymentError, match="EXACT_REGISTRY_SHORT_LIVED_TOKEN_REQUIRED"):
+        deploy.scan_image(instance, state, image, "trivy")
+    assert execute.call_count == 1
+
+
 def test_build_context_requires_agent_definitions_without_including_arbitrary_documents(monkeypatch, tmp_path):
     expected = [*deploy.ROOT_CONTEXT]
     for folder, names in (("infra", deploy.INFRA_CONTEXT), ("tests", deploy.IMAGE_TESTS),

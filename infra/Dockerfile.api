@@ -16,13 +16,16 @@ COPY --chown=benefits:benefits agents ./agents
 COPY --chown=benefits:benefits infra/schema.sql infra/grant-runtime.sql ./infra/
 COPY tests/test_cloud_adapters.py tests/test_cloud_seed.py tests/test_entra_auth.py tests/test_identity_probe.py tests/test_showcase.py tests/test_cloud_acceptance.py tests/test_cloud_source_probe.py ./tests/
 RUN BENEFITS_PROFILE=local python -m pytest --quiet tests \
-    && python -c "import pyodbc; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers()"
+    && python -c "import pyodbc; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers()" \
+    && python -m pip uninstall -y pip
 
 FROM runtime-base AS final
+RUN tdnf remove -y python3-pip python3-setuptools && tdnf clean all
 COPY --from=build /opt/venv /opt/venv
 COPY --from=build --chown=benefits:benefits /app/service ./service
 COPY --from=build --chown=benefits:benefits /app/agents ./agents
 COPY --from=build --chown=benefits:benefits /app/infra ./infra
 USER benefits
+RUN python -c "import importlib.util, agent_framework.ag_ui, agent_framework.openai, azure.identity, pyodbc, uvicorn; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers(); assert importlib.util.find_spec('pip') is None; assert importlib.util.find_spec('setuptools') is None"
 EXPOSE 8000
 CMD ["python", "-m", "service.cloud_entrypoint"]

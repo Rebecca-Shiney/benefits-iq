@@ -94,9 +94,10 @@ All four Bicep entry templates compile. Local suite: 247 passed, 11 optional
 HTTP tests skipped in the full unit run; those 11 then passed separately against
 the existing local preview. Full npm and locked Python audits report no known
 vulnerabilities. Candidate distroless Node24 and Azure Linux3/Python3.12 base
-scans have no High/Critical findings, but **final application images have not
-been built/scanned**. Cloud Python 3.12 compatibility/ODBC and final OS/native/
-bundled-package scans remain mandatory in the remote build before publication.
+scans have no High/Critical findings, but are not final-image acceptance.
+The first complete API build passed its Python 3.12 tests/ODBC check, then its
+final-image scan blocked on bundled tooling. Removing unused system/venv
+pip/setuptools and scanning the replacement remain mandatory before publication.
 The owned API audience and Canadian foundation now exist; no application is
 deployed or live-verified. See the execution evidence below.
 
@@ -114,7 +115,7 @@ restricted, jobs have no ingress/schedule/automatic retry, and retained setup
 privilege is disclosed rather than falsely described as removed. No shared
 resource, capacity or workspace is touched; no automatic deletion/reset is added.
 
-### Current showcase implementation evidence
+### Showcase implementation and earlier local evidence
 
 The explicit `showcase` profile now has anonymous allowlisted view selection,
 backend signed app-only caller validation (`idtyp`, absent `scp`, exact tenant,
@@ -147,7 +148,8 @@ authority. This does not grant tenant-wide Entra consent or prove owned-app
 writes. Remaining work includes the resource API registration, phase-gated
 infrastructure/bootstrap, remote image build/validation, real MI claim proof,
 SQL/Search/OCR/model seeding/read-write acceptance and only then public exposure.
-No Azure write, resource provisioning or Fabric operation has occurred.
+At that earlier local milestone no Azure write had occurred. The later
+foundation execution below supersedes this status; no Fabric operation occurred.
 
 ### Foundation IaC research and staging
 
@@ -827,6 +829,20 @@ and its completed run response rather than pretending an empty response is
 success. The initial read-only CLI issue was independently fixed: Graph `/me`
 uses the selected subscription/tenant, while global extension commands must not
 receive an unsupported subscription flag.
+
+Run `cw2` failed closed on a package-repository metadata signature error; no
+signature checks were disabled. A bounded retry `cw3` passed signed package
+installation, then exposed a missing required agent Markdown file in the
+committed context. The build allowlist now requires the seven named agent
+definition/options files without permitting arbitrary notes/attachments.
+Run `cw4` built the API successfully. Final-image scanning, using an in-memory
+short-lived deployer registry token, found bundled `msgpack` 1.1.2,
+`setuptools` 70.3.0 and `urllib3` 2.7.0 advisories despite a clean application
+lockfile audit. The Dockerfile removes unused system and venv packaging tools,
+then verifies installed SDK imports and ODBC as the final non-root user.
+No finding waiver or broad exclusion is used. Scans reject every secret match
+and known language-package vulnerability; the OS threshold remains High/Critical.
+The replacement image must pass before any proof job or data-service deployment.
 
 Final images, private MI/source/model proofs, data services and public/browser
 cloud acceptance remain outstanding. The existing foundation can incur registry/

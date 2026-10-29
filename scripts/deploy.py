@@ -247,6 +247,26 @@ def scan_findings(report, image):
                 or item.get("Severity") not in {"LOW", "MEDIUM"})]
 
 
+def scan_image(azure, state, image, scanner):
+    cache = str(WORK / "scan-cache")
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in {"TRIVY_USERNAME", "TRIVY_PASSWORD", "TRIVY_REGISTRY_TOKEN"}}
+    command([str(scanner), "image", "--quiet", "--download-db-only", "--cache-dir", cache,
+             "--skip-version-check"], timeout=1000, env=environment)
+    login = azure.run("acr", "login", "--name", state["foundation"]["registryName"], "--expose-token")
+    if (login.get("loginServer") != state["foundation"]["registryEndpoint"]
+            or not isinstance(login.get("accessToken"), str) or not login["accessToken"]):
+        raise DeploymentError("EXACT_REGISTRY_SHORT_LIVED_TOKEN_REQUIRED")
+    scan_environment = {**environment, "TRIVY_USERNAME": "00000000-0000-0000-0000-000000000000",
+                        "TRIVY_PASSWORD": login["accessToken"]}
+    report = json_output(command([
+        str(scanner), "image", "--quiet", "--image-src", "remote", "--scanners", "vuln,secret",
+        "--format", "json", "--cache-dir", cache, "--timeout", "15m", "--skip-version-check",
+        "--skip-db-update", "--skip-java-db-update", image,
+    ], timeout=1000, env=scan_environment))
+    return scan_findings(report, image)
+
+
 def build_image(azure, state, component, scanner):
     files = context_files()
     content = hashlib.sha256()
@@ -282,14 +302,7 @@ def build_image(azure, state, component, scanner):
     if not re.fullmatch(r"sha256:[a-f0-9]{64}", digest):
         raise DeploymentError("BUILT_IMAGE_DIGEST_REQUIRED")
     image = f"{state['foundation']['registryEndpoint']}/benefits-{component}@{digest}"
-    environment = {**os.environ, "AZURE_TENANT_ID": state["tenant"],
-                   "AZURE_TOKEN_CREDENTIALS": "AzureCLICredential"}
-    report = json_output(command([str(scanner), "image", "--quiet", "--image-src", "remote",
-                                  "--scanners", "vuln,secret",
-                                  "--format", "json", "--cache-dir", str(WORK / "scan-cache"),
-                                  "--timeout", "15m", "--skip-version-check", image],
-                                 timeout=1000, env=environment))
-    findings = scan_findings(report, image)
+    findings = scan_image(azure, state, image, scanner)
     if findings:
         safe = [{"id": item.get("VulnerabilityID") or item.get("RuleID"),
                  "severity": item.get("Severity"), "package": item.get("PkgName")}
