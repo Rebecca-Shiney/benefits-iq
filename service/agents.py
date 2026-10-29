@@ -9,6 +9,8 @@ from agent_framework.openai import OpenAIChatClient
 
 from . import domain
 from .store import audit, connection
+from .profile import starter
+from .cancellation import run_blocking
 
 
 request_context: ContextVar[tuple[domain.Identity, str]] = ContextVar("request_context")
@@ -87,30 +89,40 @@ class SyntheticOrchestrator(BaseAgent):
 
 
 def model_agent():
-    if not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL"):
+    if not starter() and (not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL")):
         domain.fail(503, "LIVE_MODEL_NOT_CONFIGURED")
     identity, case_id = request_context.get()
     # Bind context at construction; a model cannot choose another member or case.
-    def get_case_status() -> str:
+    async def get_case_status() -> str:
         """Return the permitted case's public status, without clinical detail."""
-        return domain.case_view(identity, case_id)["message"]
+        return (await run_blocking(domain.case_view, identity, case_id))["message"]
 
-    def read_intake_completeness() -> str:
+    async def read_intake_completeness() -> str:
         """Check the current synthetic form. No authoritative state is modified."""
-        return str(domain.extract_authorization_form(identity, case_id)["missing"])
+        return str((await run_blocking(domain.extract_authorization_form, identity, case_id))["missing"])
 
-    def read_criteria_version() -> str:
+    async def read_criteria_version() -> str:
         """Return the governed synthetic criteria version or explicit source gap."""
-        result = domain.retrieve_drug_criteria(identity, case_id)
+        result = await run_blocking(domain.retrieve_drug_criteria, identity, case_id)
         return result["gap"] or result["version"]
 
     tools = [get_case_status]
     if identity.role == "reviewer":
         tools.extend([read_intake_completeness, read_criteria_version])
     prompt = (Path(__file__).parent.parent / "agents" / "orchestrator.md").read_text()
+    if starter():
+        from .azure_services import credential, endpoint
+        client = OpenAIChatClient(
+            model=os.environ["BENEFITS_MODEL_DEPLOYMENT"],
+            azure_endpoint=endpoint("BENEFITS_MODEL_ENDPOINT", "openai.azure.com"),
+            credential=credential(), api_version="2024-10-21",
+        )
+    else:
+        client = OpenAIChatClient(model=os.environ["OPENAI_MODEL"])
     return Agent(
         name="health_benefits_orchestrator",
-        client=OpenAIChatClient(model=os.environ["OPENAI_MODEL"]),
+        client=client,
+        default_options={"store": False, "max_tokens": 1500},
         instructions=prompt + "\nYou have only read-only, case-bound capabilities. Never infer clinical facts. "
         "State that all evidence sources are synthetic. Tell the user to use controlled UI actions for intake, evidence saves and human decisions.",
         tools=tools,

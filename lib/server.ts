@@ -2,6 +2,8 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
+import { cloudIdentity, runtimeAuthorization, starterMode, type CloudIdentity } from "./entra-server";
+export { starterMode } from "./entra-server";
 
 export const demoUsers = ["reviewer-a", "reviewer-b", "contact-a", "employer-a", "employer-b"];
 
@@ -20,7 +22,11 @@ export function signSession(user: string) {
   return `${payload}.${signature(payload)}`;
 }
 
-export async function identity() {
+export async function identity(request?: NextRequest) {
+  if (starterMode()) {
+    if (!request) throw new Error("USER_ACCESS_TOKEN_REQUIRED");
+    return cloudIdentity(request.headers.get("authorization") || "");
+  }
   const token = (await cookies()).get("benefits-demo-session")?.value;
   if (!token) return null;
   const [user, expiry, sig] = token.split(".");
@@ -36,7 +42,17 @@ export function sameOrigin(request: NextRequest) {
   return !origin || origin === expected;
 }
 
-export function serviceHeaders(user: string, caseId?: string) {
+export async function serviceHeaders(user: string | CloudIdentity, caseId?: string) {
+  if (starterMode()) {
+    if (typeof user === "string") throw new Error("DEMO_IDENTITY_NOT_ALLOWED");
+    return {
+      Authorization: user.authorization,
+      "X-Benefits-Runtime-Authorization": await runtimeAuthorization(),
+      ...(caseId ? { "X-Benefits-Case": caseId } : {}),
+      "Content-Type": "application/json",
+    };
+  }
+  if (typeof user !== "string") throw new Error("LOCAL_SESSION_REQUIRED");
   return {
     Authorization: `Bearer ${secret()}`,
     "X-Benefits-User": user,
@@ -46,6 +62,7 @@ export function serviceHeaders(user: string, caseId?: string) {
 }
 
 export function serviceUrl() {
+  if (starterMode() && !process.env.BENEFITS_SERVICE_URL) throw new Error("BACKEND_ENDPOINT_REQUIRED");
   return process.env.BENEFITS_SERVICE_URL || "http://127.0.0.1:8000";
 }
 

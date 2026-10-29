@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CopilotKitProvider, CopilotChat } from "@copilotkit/react-core/v2";
 import { ActivitySchema, api, type Aggregate, type Case, type CaseOperations, type Field, type Session, type Task, type TaskKind, type Workbench } from "@/lib/contracts";
 import { dateTime, Documents, label, Metrics, Overview, TaskPanel } from "@/components/operations";
+import { authorizationHeaders, initializeAuth, signIn, signOut } from "@/lib/browser-auth";
 
 const personas = [
   ["reviewer-a", "Clinical reviewer · Employer A"], ["reviewer-b", "Clinical reviewer · Employer B"],
@@ -41,6 +42,8 @@ export default function Workspace() {
   const [sendConfirmed, setSendConfirmed] = useState(false);
   const [notice, setNotice] = useState("");
   const [showChat, setShowChat] = useState(false);
+  const [authProfile, setAuthProfile] = useState<"local" | "starter" | null>(null);
+  const [chatHeaders, setChatHeaders] = useState<Record<string, string>>({});
   const controller = useRef<AbortController | null>(null);
   const decisionKey = useRef<string | null>(null);
   const caseRequest = useRef(0);
@@ -104,16 +107,66 @@ export default function Workspace() {
     return () => controller.current?.abort();
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    initializeAuth().then(({ config }) => {
+      if (active) setAuthProfile(config.profile);
+    }).catch(() => { if (active) setError("Authentication configuration unavailable. Reload after resolving setup."); });
+    return () => { active = false; };
+  }, []);
+
   async function login() {
     ++caseRequest.current;
     setRunning(true); setError(""); setCurrent(null); setSession(null); setAggregate(null); setWorkbench(null); setOperations(null);
     setView("cases"); setTab("overview"); setFilter(""); setStatusFilter("all"); setPriorityFilter("all"); setOwnerFilter("all");
     filtersRef.current = new URLSearchParams({ search: "", state: "all", priority: "all", owner: "all", sort }).toString();
     try {
-      const response = await fetch("/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user: selectedUser }) });
-      if (!response.ok) throw new Error("Unable to create local demo session.");
+      if (authProfile === "starter") {
+        await signIn();
+      } else {
+        const response = await fetch("/api/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user: selectedUser }) });
+        if (!response.ok) throw new Error("Unable to create local demo session.");
+      }
       await refresh();
     } catch (e) { setError(String(e)); } finally { setRunning(false); }
+  }
+
+  async function logout() {
+    setRunning(true); setError(""); setShowChat(false);
+    try { await signOut(); }
+    catch { setError("Entra sign-out did not finish. Close this tab to discard its in-memory tokens."); }
+    finally {
+      setSession(null); setCurrent(null); setOperations(null); setWorkbench(null); setAggregate(null);
+      setRenewals([]); setFields({}); setDraft(""); setReason(""); setChatHeaders({}); setRunning(false);
+    }
+  }
+
+  async function toggleChat() {
+    if (showChat) { setShowChat(false); return; }
+    try {
+      setChatHeaders(await authorizationHeaders());
+      setShowChat(true);
+    } catch { setError("Chat authentication expired or unavailable. Sign in again before retrying."); }
+  }
+
+  async function downloadSource() {
+    if (!current) return;
+    setRunning(true); setError("");
+    try {
+      const response = await fetch(`/api/backend/cases/${current.id}/document`, {
+        headers: await authorizationHeaders(), cache: "no-store",
+      });
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(body.error?.code || "SOURCE_DOCUMENT_UNAVAILABLE");
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url; link.download = `${current.id}-synthetic-intake.pdf`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch (e) { setError(String(e)); }
+    finally { setRunning(false); }
   }
 
   async function run(intent: "intake" | "evidence" | "status") {
@@ -130,7 +183,7 @@ export default function Workspace() {
     }
     try {
       const response = await fetch(`/api/backend/cases/${id}/run`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json", ...await authorizationHeaders() },
         body: JSON.stringify({ intent, version: current.version }), signal: controller.current.signal,
       });
       if (!response.ok) {
@@ -256,32 +309,34 @@ export default function Workspace() {
     {!session && <div className="hero"><div><p className="eyebrow">CLARITY FOR EVERY CASE</p>
       <h1>Better evidence.<br /><span>Human decisions.</span></h1>
       <p className="subtitle">A governed workspace for special authorization and Member 360.</p></div>
-      <section className="session-card" aria-label="Local demo session">
-        <label htmlFor="persona">LOCAL DEMO PERSONA</label>
+      <section className="session-card" aria-label={authProfile === "starter" ? "Microsoft Entra sign-in" : "Local demo session"}>
+        {authProfile === "local" && <><label htmlFor="persona">LOCAL DEMO PERSONA</label>
         <select id="persona" value={selectedUser} disabled={running} onChange={e => setSelectedUser(e.target.value)}>
           {personas.map(([id, label]) => <option value={id} key={id}>{label}</option>)}
-        </select>
-        <button onClick={login} disabled={running}>Open workspace <span aria-hidden>→</span></button>
-        <small>Explicit demo identity switcher, not production authentication.</small>
+        </select></>}
+        <button onClick={login} disabled={running || !authProfile}>{authProfile === "starter" ? "Sign in with Microsoft Entra" : "Open workspace"} <span aria-hidden>→</span></button>
+        <small>{authProfile === "starter" ? "Azure-native synthetic data. Access is assigned by approved role and employer." : "Explicit demo identity switcher, not production authentication."}</small>
       </section>
     </div>}
     {session && <div className="dashboard-heading"><div><p className="eyebrow">BENEFITS OPERATIONS / {workbench?.employer.name || session.employer}</p>
       <h1>{session.role === "reviewer" ? "Review desk" : session.role === "contact" ? "Member support" : "Employer portfolio"}</h1>
       <p>{session.role === "employer" ? "Fictional group-level trends. No employee drill-through." : "A clear view of your workload, evidence and next handoff."}</p></div>
+      {authProfile === "starter" ? <div className="persona-switch"><button className="secondary" disabled={busy} onClick={login}>Sign in again</button>
+        <button className="secondary" disabled={busy} onClick={logout}>Sign out</button></div> :
       <div className="persona-switch"><label htmlFor="persona">Demo workspace<select id="persona" value={selectedUser} disabled={busy} onChange={e => setSelectedUser(e.target.value)}>
         {personas.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select></label>
-        <button className="secondary" disabled={busy} onClick={login}>Switch workspace</button></div>
+        <button className="secondary" disabled={busy} onClick={login}>Switch workspace</button></div>}
     </div>}
     <div className="safety-strip"><span className="dot" /><strong>People decide. Agents prepare.</strong>
       <span>No autonomous clinical decisions, real health data or external sends.</span></div>
     {error && <div role="alert" className="error">{error} {session && <button disabled={busy} onClick={reload}>Refresh case</button>}</div>}
     {notice && <p role="status" className="notice">{notice}</p>}
     {!session && <section className="welcome card"><p className="eyebrow">YOUR REVIEW DESK, CONNECTED</p><h2>One case. Every relevant source.</h2>
-      <p>Choose a synthetic persona to explore intake, cited evidence, human checkpoints and role-safe updates.</p>
+      <p>{authProfile === "starter" ? "Sign in to your approved synthetic-data role to explore intake, cited evidence and human checkpoints." : "Choose a synthetic persona to explore intake, cited evidence, human checkpoints and role-safe updates."}</p>
       <div className="welcome-grid"><div><b>01</b><h3>Check completeness</h3><p>Uncertain fields stay uncertain.</p></div>
         <div><b>02</b><h3>Prepare evidence</h3><p>Versioned sources, explicit gaps.</p></div><div><b>03</b><h3>Decide with context</h3><p>Your decision. Recorded and traceable.</p></div></div></section>}
     {session && <div className="workspace-meta"><strong>{session.role === "reviewer" ? "Clinical review workspace" : session.role === "contact" ? "Contact centre" : "Employer insights"}</strong>
-      <span>{session.id} / {session.employer} / {session.mode === "live" ? "Configured model chat" : "Deterministic synthetic agents"}</span></div>}
+      <span>{session.id} / {session.employer} / {session.profile === "starter" ? "Azure-native synthetic sources / regional model" : session.mode === "live" ? "Configured model chat" : "Deterministic synthetic agents"}</span></div>}
     {aggregate && <section className="card"><p className="eyebrow">PORTFOLIO VIEW / AGGREGATES ONLY</p><h2>Specialty utilization trends</h2>
       <p>This separate fictional portfolio is not computed from the individual workflow members.</p>
       <div className="trend-grid">{aggregate.rows.map(r => <article className="trend" key={r.period}><h3>{r.period}</h3>
@@ -332,13 +387,16 @@ export default function Workspace() {
         <span className="pill">{current.state.replaceAll("_", " ")}</span><small>Authoritative record v{current.version}</small></section>
         <nav className="case-tabs" aria-label="Case sections">{tabs.map(t => <button key={t} aria-current={tab === t ? "page" : undefined} disabled={busy} onClick={() => setTab(t)}>{t === "tasks" ? `Tasks (${operations.tasks.filter(x => x.state !== "done").length})` : label(t)}</button>)}</nav>
         {tab === "overview" && <Overview current={current} ops={operations} reviewer={session.role === "reviewer"} busy={busy} owner={owner} priority={priority} setOwner={setOwner} setPriority={setPriority} onAssign={saveRouting} onNavigate={setTab} />}
-        {tab === "documents" && session.role === "reviewer" && <Documents ops={operations} />}
+        {tab === "documents" && session.role === "reviewer" && <>
+          {authProfile === "starter" && <button className="secondary" disabled={busy} onClick={downloadSource}>Download synthetic intake source PDF</button>}
+          <Documents ops={operations} /></>}
         {tab === "tasks" && <TaskPanel tasks={operations.tasks} reviewer={session.role === "reviewer"} busy={busy} onCreate={createTask} onUpdate={updateTask} />}
         {session.role === "reviewer" && <>
           {tab === "intake" && <section className="card"><div className="section-heading"><h2>Intake & Member 360</h2><button className="secondary" disabled={running || !!current.decision || !session.features.intake} onClick={() => run("intake")}>Run intake</button></div>
             <p>Plan {current.member360?.plan} · Coverage {current.member360?.coverage} · Values below 85% confidence require human verification.</p>
+            {authProfile === "starter" && <p>Authorized synthetic member record: {current.member360?.member_id}. Compare the source PDF before confirming any OCR correction.</p>}
             <div className="form-grid">{Object.entries(fields).map(([name, field]) => <label key={name}>{name.replaceAll("_", " ")}
-              <input value={field.value || ""} readOnly={name === "member_id"} disabled={running || !!current.decision}
+              <input value={field.value || ""} readOnly={name === "member_id" && authProfile !== "starter"} disabled={running || !!current.decision}
                 onChange={e => setFields(f => ({ ...f, [name]: { ...field, value: e.target.value || null, confidence: 1 } }))} />
               <small className={field.confidence < .85 || !field.value ? "warning-text" : ""}>{Math.round(field.confidence * 100)}% confidence · {field.source}</small>
             </label>)}</div><button className="secondary" disabled={running || !!current.decision} onClick={verifyForm}>Confirm verified form fields</button>
@@ -385,9 +443,9 @@ export default function Workspace() {
           {activities.map((a, i) => <p key={`${i}-${a}`}>{a}</p>)}</div>
         {running && controller.current && <button className="secondary" onClick={() => controller.current?.abort()}>Cancel workflow</button>}
         <p className="small">Interrupted runs are never silently replayed. Refresh the case before retrying; streamed state is provisional.</p>
-        {current && session.features.chat && <><button className="secondary" disabled={busy} onClick={() => setShowChat(c => !c)}>{showChat ? "Close chat" : "Open case-bound chat"}</button>
+        {current && session.features.chat && <><button className="secondary" disabled={busy} onClick={toggleChat}>{showChat ? "Close chat" : "Open case-bound chat"}</button>
           {showChat && <CopilotKitProvider runtimeUrl="/api/copilotkit" useSingleEndpoint={false}
-            headers={{ "X-Benefits-Case": current.id }} showDevConsole={false}
+            headers={{ ...chatHeaders, "X-Benefits-Case": current.id }} showDevConsole={false}
             onError={(event) => setError(`Chat unavailable: ${event.code}. Refresh before retrying.`)}>
             <CopilotChat agentId="health_benefits_orchestrator" input={{
               textArea: { "aria-label": "Case-bound chat message" },

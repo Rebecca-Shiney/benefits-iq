@@ -18,6 +18,8 @@ def main():
     parser.add_argument("--production", action="store_true", help="Use a previously built Next.js bundle.")
     parser.add_argument("--live", action="store_true", help="Explicitly enable configured OpenAI chat; case data stays synthetic.")
     args = parser.parse_args()
+    if os.environ.get("BENEFITS_PROFILE", "local") != "local":
+        parser.error("This launcher is local-only. Starter requires the approved Azure deployment entry point.")
     root = Path(__file__).resolve().parents[1]
     if args.web_port == args.api_port:
         parser.error("Web and API ports must differ.")

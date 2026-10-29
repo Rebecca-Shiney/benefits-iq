@@ -26,7 +26,7 @@ integration success or healthcare-compliance claim is supplied.
 | Profile | Intended scope | Current implementation status |
 |---|---|---|
 | Local demo | Credential-free synthetic workflow, SQLite, deterministic MAF/AG-UI and explicit demo personas | Working local application; not Entra or cloud services |
-| Starter (default cloud) | Real Next.js/Python services, regional inference, governed Search, OCR and durable Azure SQL with managed identities | In preparation; Entra validator/request-boundary foundations added, complete cloud runtime/deployment not yet implemented |
+| Starter (default cloud) | Real Next.js/Python services, regional inference, governed Search, OCR and durable Azure SQL with managed identities | Runtime adapters and signed authentication paths implemented locally; IaC/bootstrap and live cloud proof remain unfinished |
 | Enterprise (opt-in) | Actual Fabric/OneLake, aggregate-only employer semantic model, Purview and customer-specific policies | Planned integration profile only; not connected or verified |
 
 ### Starter quickstart contract and minimal inputs
@@ -76,7 +76,34 @@ than introducing a new storage account or capacity dependency.
 | Governed Azure AI Search selected over IQ-branded retrieval | The guide permits a governed search/API alternative; use an explicit, testable service boundary | No claim that Foundry IQ, Work IQ or Web IQ is deployed |
 | Public SPA PKCE and managed-identity connections replace deployed demo credentials | No stored application client secret or browser-selected identity trust | Deployer sign-in, app registration rights and real user authorization still required |
 | Canadian regional legacy model pinned explicitly | Preserve approved Canadian workload processing; avoid silent global inference | Migration must be verified/approved before reported **April 14, 2027** retirement |
-| Streaming JSON limits and compatible dependency updates | Reduce exposed parser risk while preserving installed CopilotKit/AG-UI APIs | Two underlying dependency advisories still require resolution/exposure assessment before publication |
+| Streaming JSON limits and compatible dependency updates | Reduce exposed parser risk while preserving installed CopilotKit/AG-UI APIs | body-parser patched from an immutable official release; required transitive Zod 3 remains an exposure blocker |
+
+### Implemented preparation versus deployment
+
+The Starter code now independently validates signed user and runtime tokens in
+Python, validates user tokens again in Next.js, and uses an in-memory MSAL public
+client with the installed redirect bridge (`/auth`). Deployed-mode demo headers
+are ignored; missing configuration fails explicitly. Azure identity remains a
+server-external Node dependency so its platform-specific credential helpers are
+not bundled by Turbopack.
+
+Actual adapters are implemented for managed-identity Azure SQL transactions,
+employer-bound/versioned SQL sources, scoped Azure AI Search, binary-PDF Document
+Intelligence extraction/cache and the installed MAF Azure model client. OCR
+retains actual confidence/spans, rejects corrupt PDFs and member mismatches, and
+never substitutes fixture extraction. Backend-authorized source PDF downloads
+and explicit human corrections are supported. SQL aggregate snapshots suppress
+small cells; they are not Fabric. Blocking workflow capabilities run off the
+event loop; cancellation observed before the commit checkpoint rolls back
+pending writes. A commit already begun cannot be undone by closing a stream:
+refresh authoritative state.
+
+These are **local implementation and mock/signed-token test results, not cloud
+integration evidence**. The SQL schema is in `infra/schema.sql`; a cloud image
+must supply ODBC Driver 18. Resource IaC, image build/push, Entra registration and
+role bootstrap, SQL principal/schema/seed setup, Search indexing and reproducible
+cloud readiness checks are not yet delivered. `azd up` must not be presented as
+working, nor `/health` liveness as proof of ready cloud connections.
 
 ### Security guarantees versus non-guarantees
 
@@ -173,15 +200,37 @@ children when interrupted. Do not expose this identity-switching demo publicly.
 If ports are in use, specify `--web-port 3020 --api-port 8020`. No source attachment
 is needed at runtime.
 
-**Dependency caveat:** the latest production-dependency scan reports **25 high
-affected package entries**, tracing to two underlying advisories:
-`GHSA-27r3-jxmh-p828` (body-parser compressed trailing bytes) and
-`GHSA-mrhx-c7xc-m3w5` (transitive Zod 3 constrained collections).
-Compatible updates resolved other advisory paths; no forced major downgrade or
-blind Zod 3-to-4 replacement was applied. JSON boundaries reject compression and
-bound streamed bytes and input shape before SDK parsing. These are defense in
-depth, not a claim that the installed advisories are fixed. **Public exposure
-remains gated** pending compatible remediation and exposure validation.
+**Dependency gate:** the latest production scan reports **20 high affected
+package entries, one underlying advisory**:
+[GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+Required transitive Zod 3 is affected; the advisory lists `<4.6.6` as vulnerable
+and `4.6.6` as patched. The direct Zod 4 dependency is patched, but that does not
+repair SDK-owned Zod 3 paths. Checked stable AG-UI `1.0.3` still requires
+`zod:^3.25.76`; CopilotKit `1.79.1` also retains transitive Zod 3. CopilotKit
+`2.0.0-next.1` is an older prerelease with Zod 3, not a supported remediation.
+
+The body-parser advisory
+[GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828)
+is resolved by pinning official `2.4.0` release commit
+[`b4744d7`](https://github.com/expressjs/body-parser/commit/b4744d739e1e2e5257f2ddac31eed191aa5152a4)
+as an immutable GitHub source tarball with lockfile integrity. The npm registry
+returned 404 for `2.4.0` when checked; the official release source, not a local
+patch or unverified fork, supplies the fix. Installation requires access to
+GitHub codeload as well as npm.
+
+**The user selected keeping CopilotKit mandatory and waiting for compatible
+upstream fixes.** Do not remove it, globally force Zod 3 to an incompatible major
+or treat the Zod 4 `/v3` compatibility path as a demonstrated fix. JSON boundaries
+reject compression and bound streamed bytes/input shape before SDK parsing;
+these are defense in depth, not remediation of the remaining installed advisory.
+Public exposure and paid provisioning of an unusable blocked deployment remain
+on hold. No automatic release monitoring is configured.
+
+Reopen deployment only after compatible releases eliminate the required
+vulnerable paths (or a separately approved architecture change), followed by a
+fresh locked install/audit and API/type/build/HTTP/browser checks. Then finish
+infrastructure/bootstrap, run `azure-validate` before `azure-deploy`, and prove
+actual cloud behavior. A successful ARM deployment alone is insufficient.
 
 For a production-mode *local* preview, first run `npm run build`, then:
 
@@ -325,7 +374,7 @@ providers/models fail as errors, never silently fall back to fixtures. Live
 provider behavior needs credentials and is **not claimed verified** by the
 credential-free test suite.
 
-For manual process deployment, `.env.example` lists server settings. Supply the
+For manual **local** process deployment, `.env.example` lists server settings. Supply the
 same random secret of at least 32 characters to both processes. Next loads
 `.env.local`; uvicorn does not unless launched with `--env-file`. Keep keys
 server-side, never under `NEXT_PUBLIC_`. The convenience launcher is preferred.

@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from .contracts import Brief, CriteriaLookup, DecisionInput, Eligibility, EvidenceItem, Extraction, FormInput, Member360, Source
 from .catalog import CRITERIA, PLANS
 from .store import audit, connection, now
+from .profile import starter
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,34 @@ IDENTITIES = {
     "employer-b": Identity("employer-b", "employer", "SYN-EMP-B"),
 }
 REQUIRED_FIELDS = {"member_id", "drug", "indication", "prescriber", "prior_therapy"}
+
+
+def identities():
+    if starter():
+        from .entra_auth import EntraConfiguration
+        return EntraConfiguration.from_environment().identities
+    return IDENTITIES
+
+
+def member_payload(db, row):
+    if starter():
+        from .azure_services import member_payload as cloud_payload
+        return cloud_payload(db, row)
+    return json.loads(row["payload"])
+
+
+def plan_document(plan_id, employer):
+    if starter():
+        from .azure_services import plan_document as cloud_plan
+        return cloud_plan(plan_id, employer)
+    return PLANS[plan_id]
+
+
+def source_criterion(payload, employer):
+    if starter():
+        from .azure_services import source_criterion as cloud_criterion
+        return cloud_criterion(payload, employer)
+    return CRITERIA.get((payload["plan"], payload["fields"]["drug"]["value"], payload["fields"]["indication"]["value"]))
 
 
 def fail(status: int, code: str):
@@ -84,7 +113,7 @@ def case_view(identity: Identity, case_id: str):
         ]
         result["update_draft"] = result["message"] + " Please contact the support team for the next step. No decision date is promised."
         if identity.role == "reviewer":
-            payload = Member360.model_validate_json(row["payload"]).model_dump()
+            payload = Member360.model_validate(member_payload(db, row)).model_dump()
             result.update({
                 "employer": row["employer"], "member": row["member"], "scenario": row["scenario"],
                 "member360": payload,
@@ -115,18 +144,26 @@ def extract_authorization_form(identity: Identity, case_id: str):
     with connection() as db:
         row = load(db, identity, case_id, True)
         payload = json.loads(row["payload"])
+    if starter() and not payload["form_version"].startswith("form-verified-"):
+        from .azure_services import extract_document
+        return extract_document(row)
+    else:
         return Extraction(fields=payload["fields"], missing=missing_fields(payload),
                           source_version=payload["form_version"], as_of=now()).model_dump()
 
 
 def get_member_360(identity: Identity, case_id: str):
     with connection() as db:
-        return Member360.model_validate_json(load(db, identity, case_id, True)["payload"]).model_dump()
+        return Member360.model_validate(member_payload(db, load(db, identity, case_id, True))).model_dump()
 
 
 def check_plan_eligibility(identity: Identity, case_id: str):
     payload = get_member_360(identity, case_id)
-    plan = PLANS[payload["plan"]]
+    return eligibility_for(payload, identity.employer)
+
+
+def eligibility_for(payload, employer):
+    plan = plan_document(payload["plan"], employer)
     valid = payload["coverage"] == "active" and payload["fields"]["drug"]["value"] in plan["covered_drugs"]
     return Eligibility(eligible=valid, reason_codes=[] if valid else ["DRUG_PLAN_REVIEW_REQUIRED"],
                        source=payload["plan"], source_version=plan["version"], as_of=plan["as_of"]).model_dump()
@@ -138,7 +175,11 @@ def get_claims_history(identity: Identity, case_id: str):
 
 def retrieve_drug_criteria(identity: Identity, case_id: str):
     payload = get_member_360(identity, case_id)
-    criterion = CRITERIA.get((payload["plan"], payload["fields"]["drug"]["value"], payload["fields"]["indication"]["value"]))
+    if starter():
+        from .azure_services import retrieve_criteria
+        criterion = retrieve_criteria(payload, identity.employer)
+    else:
+        criterion = source_criterion(payload, identity.employer)
     if not criterion or criterion["valid_until"] < date.today().isoformat():
         return CriteriaLookup(version=None, passages=[], gap="Criteria absent or stale for this drug/indication/plan; human escalation required.").model_dump()
     return CriteriaLookup(version=criterion["version"], passages=[
@@ -168,15 +209,15 @@ def prepare_brief(identity: Identity, case_id: str, version: int, trace_id: str 
     form = Source(id=payload["form_source"], version=payload["form_version"],
                   as_of="2026-10-01", title="Synthetic authorization form",
                   passage="Verified structured fields; uncertain fields are not inferred.")
-    plan_document = PLANS[payload["plan"]]
-    plan = Source(id=payload["plan"], version=plan_document["version"], as_of=plan_document["as_of"],
-                  title="Synthetic plan coverage", passage=plan_document["passage"])
+    coverage_document = plan_document(payload["plan"], identity.employer)
+    plan = Source(id=payload["plan"], version=coverage_document["version"], as_of=coverage_document["as_of"],
+                  title="Synthetic plan coverage", passage=coverage_document["passage"])
     claim_sources = [Source(id=c["id"], version=c["version"], as_of=c["date"],
                             title="Synthetic prior therapy claim", passage=c["therapy"]) for c in claims]
     gap = criteria["gap"]
     items = [
         EvidenceItem(criterion="Plan eligibility", state="unknown" if gap else "supported" if eligibility["eligible"] else "missing",
-                     explanation=f"Active coverage checked against {plan_document['version']}; reviewer must resolve any mismatch.",
+                     explanation=f"Active coverage checked against {coverage_document['version']}; reviewer must resolve any mismatch.",
                      sources=[plan] + policy_sources),
         EvidenceItem(criterion="Verified prescriber", state="unknown" if gap else "missing" if "prescriber" in missing else "supported",
                      explanation="Low confidence is treated as missing; no inferred prescriber.",
@@ -219,7 +260,8 @@ def brief_history(identity: Identity, case_id: str):
 
 def intake(identity: Identity, case_id: str, version: int, trace_id: str | None = None):
     result = extract_authorization_form(identity, case_id)
-    eligibility = check_plan_eligibility(identity, case_id)
+    payload = get_member_360(identity, case_id)
+    eligibility = eligibility_for({**payload, "fields": result["fields"]}, identity.employer)
     trace = trace_id or secrets.token_hex(12)
     with connection() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -228,7 +270,14 @@ def intake(identity: Identity, case_id: str, version: int, trace_id: str | None 
         if row["decision"]:
             fail(409, "DECIDED_CASE_IMMUTABLE")
         state = "intake_incomplete" if result["missing"] else "intake_checked"
-        db.execute("UPDATE cases SET state=?,version=version+1 WHERE id=?", (state, case_id))
+        if starter():
+            payload = json.loads(row["payload"])
+            payload["fields"] = result["fields"]
+            payload["form_version"] = result["source_version"]
+            db.execute("UPDATE cases SET payload=?,brief=NULL,state=?,version=version+1 WHERE id=?",
+                       (json.dumps(payload), state, case_id))
+        else:
+            db.execute("UPDATE cases SET state=?,version=version+1 WHERE id=?", (state, case_id))
         audit(db, case_id, identity.id, "intake_completeness", trace)
     return {**result, "eligibility": eligibility, "traceId": trace, "version": version + 1,
             "draft": "Please verify the following form fields: " + ", ".join(result["missing"]) if result["missing"] else None}
@@ -261,7 +310,7 @@ def record_human_decision(identity: Identity, case_id: str, request: DecisionInp
     with connection() as db:
         db.execute("BEGIN IMMEDIATE")
         row = load(db, identity, case_id, True)
-        existing = db.execute("SELECT * FROM decisions WHERE key=?", (request.idempotency_key,)).fetchone()
+        existing = db.execute("SELECT * FROM decisions WHERE [key]=?", (request.idempotency_key,)).fetchone()
         if existing:
             if existing["case_id"] != case_id or existing["actor"] != identity.id or existing["fingerprint"] != fingerprint:
                 fail(409, "IDEMPOTENCY_KEY_REUSED")
@@ -287,6 +336,9 @@ def record_human_decision(identity: Identity, case_id: str, request: DecisionInp
 def employer_aggregate(identity: Identity, employer: str):
     if identity.role != "employer" or identity.employer != employer:
         fail(403, "EMPLOYER_SCOPE_DENIED")
+    if starter():
+        from .azure_services import aggregate
+        return aggregate(employer)
     # Separate fictional portfolio; never derive cells from the workflow members.
     return {"employer": employer, "dataset": "separate-synthetic-portfolio-v1", "as_of": "2026-10-01",
             "minimum_cell": 10, "rows": [

@@ -5,7 +5,7 @@ import secrets
 from datetime import date, datetime, timedelta, timezone
 
 from . import domain
-from .catalog import CRITERIA, PLANS
+from .profile import starter
 from .contracts import AssignmentInput, TaskInput, TaskUpdate
 from .fixtures import EMPLOYERS, TASKS
 from .store import audit, connection, now
@@ -27,8 +27,8 @@ def visible_tasks(db, identity, case_id=None):
     return [task_view(t) for t in db.execute(sql + " ORDER BY t.due,t.id", args).fetchall()]
 
 
-def source_context(payload):
-    criterion = CRITERIA.get((payload["plan"], payload["fields"]["drug"]["value"], payload["fields"]["indication"]["value"]))
+def source_context(payload, employer):
+    criterion = domain.source_criterion(payload, employer)
     stale = not criterion or criterion["valid_until"] < date.today().isoformat()
     missing = domain.missing_fields(payload)
     conflict = payload["fields"]["prior_therapy"]["value"] == "none" and bool(payload["claims"])
@@ -46,6 +46,7 @@ def workbench(identity, search="", state="all", priority="all", owner="all", sor
             "JOIN case_operations o ON o.case_id=c.id WHERE c.employer=?", (identity.employer,),
         ).fetchall()
         tasks = visible_tasks(db, identity)
+        payloads = {row["id"]: domain.member_payload(db, row) for row in rows} if identity.role == "reviewer" else {}
     items = []
     for row in rows:
         active = row["state"] not in {"approved", "declined"}
@@ -60,8 +61,8 @@ def workbench(identity, search="", state="all", priority="all", owner="all", sor
             "open_tasks": sum(t["case_id"] == row["id"] and t["state"] != "done" for t in tasks),
         }
         if identity.role == "reviewer":
-            payload = json.loads(row["payload"])
-            missing, conflict, _, stale = source_context(payload)
+            payload = payloads[row["id"]]
+            missing, conflict, _, stale = source_context(payload, identity.employer)
             item.update({"display_name": payload["name"], "member": row["member"],
                          "missing_fields": missing, "conflict": conflict, "source_gap": stale})
         else:
@@ -112,9 +113,9 @@ def detail(identity, case_id):
             ).fetchall()],
         }
         if identity.role == "reviewer":
-            payload = json.loads(row["payload"])
-            missing, conflict, criterion, stale = source_context(payload)
-            plan = PLANS[payload["plan"]]
+            payload = domain.member_payload(db, row)
+            missing, conflict, criterion, stale = source_context(payload, identity.employer)
+            plan = domain.plan_document(payload["plan"], identity.employer)
             documents = [
                 {"id": payload["form_source"], "title": "Authorization form", "kind": "Structured fixture",
                  "version": payload["form_version"], "as_of": "2026-10-01",
@@ -133,11 +134,18 @@ def detail(identity, case_id):
                               "version": c["version"], "as_of": c["date"], "status": "conflict" if conflict else "reference",
                               "detail": c["therapy"] + ". Evidence of prior therapy only; not a payment or clinical outcome."}
                              for c in payload["claims"])
+            if starter():
+                for document in documents:
+                    document["kind"] = "Azure SQL synthetic source"
+                documents[0]["detail"] = (
+                    f'{len(domain.REQUIRED_FIELDS) - len(missing)} / {len(domain.REQUIRED_FIELDS)} fields meet the 85% threshold. '
+                    "Run intake for actual Document Intelligence OCR; verified human corrections take precedence."
+                )
             result.update({
                 "documents": documents, "missing_fields": missing, "conflict": conflict,
                 "source_gap": stale, "verified_fields": len(domain.REQUIRED_FIELDS) - len(missing),
                 "field_count": len(domain.REQUIRED_FIELDS),
-                "owners": [{"id": x.id, "label": "Clinical reviewer / " + x.employer} for x in domain.IDENTITIES.values()
+                "owners": [{"id": x.id, "label": "Clinical reviewer / " + x.employer} for x in domain.identities().values()
                            if x.role == "reviewer" and x.employer == identity.employer],
             })
         return result
@@ -150,7 +158,7 @@ def assign(identity, case_id, request: AssignmentInput):
         domain.check_version(row, request.version)
         if row["decision"]:
             domain.fail(409, "DECIDED_CASE_IMMUTABLE")
-        owner = domain.IDENTITIES.get(request.owner)
+        owner = domain.identities().get(request.owner)
         if request.owner != "unassigned" and (not owner or owner.role != "reviewer" or owner.employer != identity.employer):
             domain.fail(422, "OWNER_OUTSIDE_REVIEW_TEAM")
         ops = db.execute("SELECT received FROM case_operations WHERE case_id=?", (case_id,)).fetchone()

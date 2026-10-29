@@ -1,30 +1,31 @@
 import { NextRequest } from "next/server";
 import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime/v2";
 import { HttpAgent } from "@ag-ui/client";
-import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError } from "@/lib/server";
+import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError, starterMode } from "@/lib/server";
 import { StatelessRunner } from "@/lib/stateless-runner";
 import { readBoundedJson } from "@/lib/request-policy";
 
 async function handle(request: NextRequest) {
-  if (!sameOrigin(request)) return safeError("ORIGIN_DENIED", 403);
-  const user = await identity();
-  if (!user) return safeError("DEMO_SESSION_REQUIRED", 401);
-  const caseId = request.headers.get("x-benefits-case") || "";
-  if (!/^SYN-CASE-\d{3}$/.test(caseId)) return safeError("CASE_REQUIRED", 422);
-  const input = await readBoundedJson(request);
-  if (input instanceof Response) return input;
   try {
+    if (!sameOrigin(request)) return safeError("ORIGIN_DENIED", 403);
+    const user = await identity(request);
+    if (!user) return safeError(starterMode() ? "ENTRA_SESSION_REQUIRED" : "DEMO_SESSION_REQUIRED", 401);
+    const caseId = request.headers.get("x-benefits-case") || "";
+    if (!/^SYN-CASE-\d{3}$/.test(caseId)) return safeError("CASE_REQUIRED", 422);
+    const input = await readBoundedJson(request);
+    if (input instanceof Response) return input;
+    const headers = await serviceHeaders(user, caseId);
     const auth = await fetch(`${serviceUrl()}/api/cases/${caseId}`, {
-      headers: serviceHeaders(user), cache: "no-store", signal: AbortSignal.timeout(5000),
+      headers, cache: "no-store", signal: AbortSignal.timeout(starterMode() ? 90_000 : 5000),
     });
     if (!auth.ok) return safeError("CASE_ACCESS_DENIED", auth.status);
-    const live = process.env.BENEFITS_MODE === "live";
+    const live = starterMode() || process.env.BENEFITS_MODE === "live";
     const runtime = new CopilotRuntime({
       runner: new StatelessRunner(),
       agents: {
         health_benefits_orchestrator: new HttpAgent({
           url: `${serviceUrl()}/${live ? "ag-ui-live" : "ag-ui"}`,
-          headers: serviceHeaders(user, caseId),
+          headers,
         }),
       },
     });

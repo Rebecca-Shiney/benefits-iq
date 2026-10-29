@@ -131,3 +131,69 @@ def test_missing_configuration_does_not_fall_back_to_demo_auth(monkeypatch):
     monkeypatch.delenv("BENEFITS_TENANT_ID", raising=False)
     with pytest.raises(RuntimeError, match="ENTRA_CONFIGURATION_INVALID"):
         EntraConfiguration.from_environment()
+
+
+@pytest.fixture
+def cloud_client(monkeypatch, key):
+    import importlib
+    from fastapi.testclient import TestClient
+    from service import azure_services
+    module = importlib.import_module("service.app")
+    for name in ("BENEFITS_SERVICE_SECRET", "OPENAI_API_KEY", "AZURE_CLIENT_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in {
+        "BENEFITS_PROFILE": "starter", "BENEFITS_TENANT_ID": TENANT,
+        "BENEFITS_API_CLIENT_ID": API, "BENEFITS_SPA_CLIENT_ID": SPA,
+        "BENEFITS_RUNTIME_CLIENT_ID": RUNTIME,
+        "BENEFITS_IDENTITY_BINDINGS": json.dumps({USER: {"role": "reviewer", "employer": "SYN-EMP-A"}}),
+    }.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(azure_services, "validate_configuration", lambda: None)
+    monkeypatch.setattr(module, "initialize", lambda: None)
+    module.requests_by_user.clear()
+    with TestClient(module.app) as client:
+        monkeypatch.setattr(module.app.state.entra.keys, "get_signing_key_from_jwt",
+                            lambda value: SimpleNamespace(key=key.public_key()))
+        yield client
+
+
+def cloud_headers(key):
+    return {"Authorization": token(key), "X-Benefits-Runtime-Authorization": token(key, application=True)}
+
+
+def test_starter_http_requires_both_real_signed_token_boundaries(cloud_client, key):
+    assert cloud_client.get("/api/session", headers={"X-Benefits-User": "reviewer-a"}).status_code == 401
+    assert cloud_client.get("/api/session", headers={"Authorization": token(key)}).status_code == 401
+    response = cloud_client.get("/api/session", headers={
+        **cloud_headers(key), "X-Benefits-User": "employer-b",
+    })
+    assert response.status_code == 200
+    assert response.json()["id"] == USER and response.json()["role"] == "reviewer"
+    assert response.json()["employer"] == "SYN-EMP-A"
+    assert response.json()["mode"] == "live" and response.json()["profile"] == "starter"
+
+
+def test_starter_http_refuses_forged_role_claims(cloud_client, key):
+    response = cloud_client.get("/api/session", headers={
+        **cloud_headers(key), "Authorization": token(key, roles=["Benefits.Employer"]),
+    })
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "USER_ACCESS_NOT_ASSIGNED"
+
+
+def test_starter_liveness_never_claims_database_ready(cloud_client):
+    response = cloud_client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "alive"
+    assert "ready" not in response.json()
+
+
+@pytest.mark.parametrize("name", ["BENEFITS_SERVICE_SECRET", "OPENAI_API_KEY", "AZURE_CLIENT_SECRET"])
+def test_starter_lifespan_rejects_static_application_credentials(monkeypatch, name):
+    from fastapi.testclient import TestClient
+    from service.app import app
+    monkeypatch.setenv("BENEFITS_PROFILE", "starter")
+    monkeypatch.setenv(name, "synthetic-test-only")
+    with pytest.raises(RuntimeError, match="STARTER_DISALLOWS_STATIC_APPLICATION_CREDENTIALS"):
+        with TestClient(app):
+            pytest.fail("No cloud startup may proceed with static application credentials.")

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
-import { demoUsers, sameOrigin, signSession, safeError } from "@/lib/server";
+import { demoUsers, sameOrigin, signSession, safeError, starterMode } from "@/lib/server";
 import { readBoundedJson } from "@/lib/request-policy";
 
 export async function POST(request: NextRequest) {
+  if (starterMode()) return safeError("DEMO_AUTH_DISABLED", 404);
   if (!sameOrigin(request)) return safeError("ORIGIN_DENIED", 403);
   const input = await readBoundedJson(request, 1024);
   if (input instanceof Response) return input;

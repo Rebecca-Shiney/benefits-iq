@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Approved: synthetic-only Azure-native Starter. Preparation in progress; not ready for validation or deployment. Enterprise governance remains gated.**
+**Approved: synthetic-only Azure-native Starter. Preparation in progress; not ready for validation or deployment. Mandatory CopilotKit upstream dependency gate blocks public exposure and wasteful paid provisioning. Enterprise governance remains gated.**
 
 The user approved implementation and paid deployment, including resuming
 `dbtdemo` F2 and creating required Entra registrations and least-privilege
@@ -116,17 +116,51 @@ literally no credential exists anywhere.
   30 high, 6 moderate, 6 low, 0 critical. Some transitive paths lack a
   straightforward fix. Remediation, compatibility checks and a new scan
   are required before public exposure; authentication is not a waiver.
-- This was the initial audit. After compatible updates and targeted overrides,
-  the current production audit reports 25 high-severity affected package entries,
-  tracing to two underlying advisories: body-parser compressed-request trailing
-  bytes (`GHSA-27r3-jxmh-p828`) and vulnerable transitive Zod 3 constrained
-  collections (`GHSA-mrhx-c7xc-m3w5`). These installed advisories remain open;
-  no clean-audit or public-exposure claim is made. Do not force a CopilotKit
-  downgrade or globally replace Zod 3 with an incompatible major version.
+- This was the initial audit. Compatible updates and targeted overrides first
+  reduced it to 25 high affected entries/two roots. The current production audit
+  is **20 high affected package entries, one root**, transitive Zod 3 constrained
+  collections (`GHSA-mrhx-c7xc-m3w5`, affected `<4.6.6`, patched `4.6.6`).
+  body-parser `GHSA-27r3-jxmh-p828` is now resolved using its official immutable
+  `2.4.0` release tarball, commit
+  `b4744d739e1e2e5257f2ddac31eed191aa5152a4`; npm returned 404 for that release
+  when checked. Lockfile integrity is retained. No clean-audit claim is made.
+  Stable AG-UI `1.0.3` still requires `zod:^3.25.76`; CopilotKit `1.79.1`
+  retains affected paths. `2.0.0-next.1` is an older prerelease, not a fix.
+  The user selected **keep CopilotKit mandatory; wait for compatible upstream
+  fixes**. No forced major override, SDK replacement, exposure waiver or
+  scheduled monitoring is authorized. Hold paid provisioning where an unusable
+  deployment would waste charges. Reopen after compatible releases eliminate
+  required vulnerable paths or a separately approved architecture change,
+  fresh locked install/audit and API/type/build/HTTP/browser compatibility
+  checks, then complete preparation and validate before deploying.
   The Next.js JSON boundaries now reject compression, enforce a streamed
   32,000-byte limit independent of Content-Length, bound collection/depth/node
   shape before SDK parsing, and use a smaller demo-session limit. These are
   defense-in-depth controls, not evidence that the advisories are fixed.
+
+### Local preparation milestone, not cloud evidence
+
+Implemented Starter dispatch with no SQLite/demo-identity fallback; independent
+Next.js/Python Entra JWT validation; managed-identity runtime caller; public
+MSAL in-memory login and actual installed `/auth` redirect bridge. SQL uses
+ODBC 18 managed identity, transaction-owned application locks, sanitized
+failures and rollback on cancellation observed before commit. No runtime DDL
+or seed fallback is introduced.
+
+Actual SQL source/member/plan/aggregate, scoped Search, binary OCR/confidence/
+span/cache and MAF Azure client adapters are implemented locally. Source PDF
+downloads require reviewer/case authorization, and human corrections supersede
+OCR. Async workflow/model capabilities offload blocking I/O; committed
+authoritative changes still require refresh after disconnect. Tests use actual
+signed JWTs and mocked cloud/ODBC boundaries, not a deployed service.
+
+`infra/schema.sql` is initial idempotent DDL only. Bicep/resource templates,
+container build configuration, Entra/SQL permission bootstrap, synthetic source/
+PDF/index seeding, deployment/rerun diagnostics and live verification are still
+unfinished. SQL startup currently requires an initialized schema; setup must
+run before application startup, not rely on the runtime to create tables.
+Keep this plan out of Ready for Validation until these and the dependency gate
+are resolved. No app registration/resource/role assignment has been created.
 - The user subsequently approved **planning reuse** of existing `dbtdemo` F2.
   ARM confirms it belongs to the selected subscription, resource group
   `testing`, region Canada East, SKU F2, state `Paused`, provisioning state

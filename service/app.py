@@ -12,12 +12,16 @@ from typing import Literal
 from agent_framework_ag_ui import AgentFrameworkAgent, add_agent_framework_fastapi_endpoint
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from . import domain, operations
 from .agents import ConfiguredModelOrchestrator, SyntheticOrchestrator, request_context
 from .contracts import Activity, AssignmentInput, DecisionInput, DraftInput, FormInput, PublicQuery, RunRequest, TaskInput, TaskUpdate
 from .store import audit, connection, initialize, now
+from .profile import profile, starter
+from .entra_auth import EntraAuthError, EntraAuthenticator, EntraConfiguration
+from .cloud_errors import CloudServiceError, SqlStoreError
+from .cancellation import WorkflowCancellation, WorkflowCancelled, run_blocking
 
 
 logger = logging.getLogger("benefits")
@@ -25,9 +29,16 @@ logger = logging.getLogger("benefits")
 
 @asynccontextmanager
 async def lifespan(app):
-    secret = os.environ.get("BENEFITS_SERVICE_SECRET", "")
-    if len(secret) < 32:
-        raise RuntimeError("BENEFITS_SERVICE_SECRET must contain at least 32 characters.")
+    if starter():
+        if any(os.environ.get(name) for name in ("BENEFITS_SERVICE_SECRET", "OPENAI_API_KEY", "AZURE_CLIENT_SECRET")):
+            raise RuntimeError("STARTER_DISALLOWS_STATIC_APPLICATION_CREDENTIALS")
+        app.state.entra = EntraAuthenticator(EntraConfiguration.from_environment())
+        from .azure_services import validate_configuration
+        validate_configuration()
+    else:
+        secret = os.environ.get("BENEFITS_SERVICE_SECRET", "")
+        if len(secret) < 32:
+            raise RuntimeError("BENEFITS_SERVICE_SECRET must contain at least 32 characters.")
     initialize()
     yield
 
@@ -46,13 +57,18 @@ def require_feature(feature: str):
         domain.fail(403, "FEATURE_DISABLED")
 
 
-async def authenticate(request: Request, authorization: str = Header(""), x_benefits_user: str = Header("")):
-    expected = os.environ.get("BENEFITS_SERVICE_SECRET", "")
-    if len(expected) < 32 or not hmac.compare_digest(authorization, "Bearer " + expected):
-        domain.fail(401, "SERVICE_AUTH_REQUIRED")
-    identity = domain.IDENTITIES.get(x_benefits_user)
-    if not identity:
-        domain.fail(401, "DEMO_SESSION_REQUIRED")
+async def authenticate(request: Request, authorization: str = Header(""), x_benefits_user: str = Header(""),
+                       x_benefits_runtime_authorization: str = Header("")):
+    if starter():
+        identity = await asyncio.to_thread(request.app.state.entra.authenticate,
+                                          x_benefits_runtime_authorization, authorization)
+    else:
+        expected = os.environ.get("BENEFITS_SERVICE_SECRET", "")
+        if len(expected) < 32 or not hmac.compare_digest(authorization, "Bearer " + expected):
+            domain.fail(401, "SERVICE_AUTH_REQUIRED")
+        identity = domain.IDENTITIES.get(x_benefits_user)
+        if not identity:
+            domain.fail(401, "DEMO_SESSION_REQUIRED")
     recent = requests_by_user[identity.id]
     current = monotonic()
     while recent and recent[0] < current - 60:
@@ -74,6 +90,25 @@ async def http_error(request, exc):
     return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
 
 
+@app.exception_handler(EntraAuthError)
+async def entra_error(request, exc):
+    return JSONResponse({"error": {"code": exc.code, "traceId": secrets.token_hex(12)}}, status_code=exc.status)
+
+
+@app.exception_handler(SqlStoreError)
+async def sql_error(request, exc):
+    trace = secrets.token_hex(12)
+    logger.error("SQL unavailable code=%s trace=%s", exc.code, trace)
+    return JSONResponse({"error": {"code": exc.code, "traceId": trace}}, status_code=503)
+
+
+@app.exception_handler(CloudServiceError)
+async def cloud_error(request, exc):
+    trace = secrets.token_hex(12)
+    logger.error("Cloud capability unavailable code=%s trace=%s", exc.code, trace)
+    return JSONResponse({"error": {"code": exc.code, "traceId": trace}}, status_code=503)
+
+
 @app.exception_handler(Exception)
 async def unexpected_error(request, exc):
     trace = secrets.token_hex(12)
@@ -83,13 +118,14 @@ async def unexpected_error(request, exc):
 
 @app.get("/health")
 def health():
-    return {"status": "ready", "mode": "synthetic", "schema_version": "1.0"}
+    return {"status": "alive", "profile": profile(), "data": "synthetic-only", "schema_version": "1.0"}
 
 
 @app.get("/api/session")
 def session(identity=Depends(authenticate)):
     return {"id": identity.id, "role": identity.role, "employer": identity.employer,
-            "mode": os.environ.get("BENEFITS_MODE", "synthetic"),
+            "mode": "live" if starter() else os.environ.get("BENEFITS_MODE", "synthetic"),
+            "profile": profile(),
             "features": {f: enabled(f) for f in ("chat", "intake", "evidence", "renewal", "employer", "activities")}}
 
 
@@ -131,6 +167,20 @@ def update_task(case_id: str, task_id: str, body: TaskUpdate, identity=Depends(a
 @app.get("/api/cases/{case_id}")
 def case(case_id: str, identity=Depends(authenticate)):
     return domain.case_view(identity, case_id)
+
+
+@app.get("/api/cases/{case_id}/document")
+def source_document(case_id: str, identity=Depends(authenticate)):
+    with connection() as db:
+        row = domain.load(db, identity, case_id, True)
+        if not starter():
+            domain.fail(404, "LOCAL_STRUCTURED_FIXTURE_ONLY")
+        from .azure_services import intake_document
+        document = intake_document(db, row)
+    return Response(bytes(document["content"]), media_type="application/pdf", headers={
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": f'attachment; filename="{case_id}-synthetic-intake.pdf"',
+    })
 
 
 @app.get("/api/cases/{case_id}/briefs")
@@ -182,12 +232,14 @@ def public(body: PublicQuery, identity=Depends(authenticate)):
 async def run(case_id: str, body: RunRequest, request: Request, identity=Depends(authenticate)):
     if body.intent != "status":
         require_feature(body.intent)
-    with connection() as db:
-        row = domain.load(db, identity, case_id, body.intent != "status")
-        domain.check_version(row, body.version)
+    def validate_case():
+        with connection() as db:
+            row = domain.load(db, identity, case_id, body.intent != "status")
+            domain.check_version(row, body.version)
+    await run_blocking(validate_case)
     run_id = secrets.token_hex(12)
 
-    async def events():
+    async def workflow_events(cancellation):
         sequence = 0
         capabilities = {
             "extract_authorization_form": lambda: domain.extract_authorization_form(identity, case_id),
@@ -210,28 +262,30 @@ async def run(case_id: str, body: RunRequest, request: Request, identity=Depends
                          else ["get_member_360", "get_claims_history", "retrieve_drug_criteria", "lookup_public_program"] if body.intent == "evidence"
                          else ["get_case_status"]):
                 if await request.is_disconnected():
+                    cancellation.cancel()
                     return
                 yield encode({"type": "STEP_STARTED", "stepName": step})
                 yield encode({"type": "TOOL_CALL_START", "toolCallId": step, "toolCallName": step})
-                capabilities[step]()
+                await run_blocking(capabilities[step])
                 await asyncio.sleep(0.04)
                 if await request.is_disconnected():
+                    cancellation.cancel()
                     return
                 yield encode({"type": "TOOL_CALL_END", "toolCallId": step})
                 yield encode({"type": "STEP_FINISHED", "stepName": step})
-            # No await between the final cancellation check and the short atomic commit.
             if await request.is_disconnected():
+                cancellation.cancel()
                 return
             if body.intent == "intake":
-                result = domain.intake(identity, case_id, body.version, run_id)
+                result = await run_blocking(domain.intake, identity, case_id, body.version, run_id)
                 activity = Activity(activity="intake_completeness", caseId=case_id, traceId=run_id,
                                     data={"missing": result["missing"], "savedVersion": result["version"]})
             elif body.intent == "evidence":
-                result = domain.prepare_brief(identity, case_id, body.version, run_id)
+                result = await run_blocking(domain.prepare_brief, identity, case_id, body.version, run_id)
                 activity = Activity(activity="criteria_evidence", caseId=case_id, traceId=run_id,
                                     data={"savedVersion": result["version"], "briefVersion": result["brief"]["version"]})
             else:
-                result = domain.case_view(identity, case_id)
+                result = await run_blocking(domain.case_view, identity, case_id)
                 activity = Activity(activity="case_status", caseId=case_id, traceId=run_id,
                                     data={"savedVersion": result["version"]})
             if enabled("activities"):
@@ -241,10 +295,21 @@ async def run(case_id: str, body: RunRequest, request: Request, identity=Depends
         except HTTPException as exc:
             yield encode({"type": "RUN_ERROR", "message": f"{exc.detail['code']} · trace {run_id}", "code": exc.detail["code"]})
         except asyncio.CancelledError:
+            cancellation.cancel()
             raise
+        except WorkflowCancelled:
+            return
+        except CloudServiceError as exc:
+            logger.error("Workflow capability unavailable code=%s trace=%s", exc.code, run_id)
+            yield encode({"type": "RUN_ERROR", "message": f"{exc.code} · trace {run_id}", "code": exc.code})
         except Exception as exc:
             logger.error("Workflow failure trace=%s type=%s", run_id, type(exc).__name__)
             yield encode({"type": "RUN_ERROR", "message": f"Workflow failed. Refresh authoritative case state. Trace {run_id}", "code": "WORKFLOW_ERROR"})
+
+    async def events():
+        with WorkflowCancellation() as cancellation:
+            async for event in workflow_events(cancellation):
+                yield event
 
     return StreamingResponse(events(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
@@ -253,9 +318,13 @@ async def run(case_id: str, body: RunRequest, request: Request, identity=Depends
 async def agent_auth(request: Request, identity=Depends(authenticate)):
     require_feature("chat")
     case_id = request.headers.get("x-benefits-case", "")
-    with connection() as db:
-        domain.load(db, identity, case_id)
-    if request.url.path == "/ag-ui-live" and (
+    def validate_case():
+        with connection() as db:
+            domain.load(db, identity, case_id)
+    await run_blocking(validate_case)
+    if starter() and request.url.path != "/ag-ui-live":
+        domain.fail(409, "STARTER_REQUIRES_MODEL_RUNTIME")
+    if not starter() and request.url.path == "/ag-ui-live" and (
         not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL")
     ):
         domain.fail(503, "LIVE_MODEL_NOT_CONFIGURED")
