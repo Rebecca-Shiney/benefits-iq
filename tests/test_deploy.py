@@ -28,7 +28,8 @@ def test_empty_patch_is_allowed_but_empty_read_is_not(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("sql_public", ["Disabled", "Enabled"])
-def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch, tmp_path, sql_public):
+@pytest.mark.parametrize("symbolic", [True, False])
+def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch, tmp_path, sql_public, symbolic):
     instance = Mock(subscription=SUBSCRIPTION, executable="az")
     instance.run.return_value = {"id": SUBSCRIPTION, "state": "Enabled",
                                  "environmentName": "AzureCloud", "user": {"type": "user"}}
@@ -39,9 +40,10 @@ def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch
     for key in ("AZURE_CLIENT_SECRET", "OPENAI_API_KEY", "BENEFITS_SERVICE_SECRET"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(deploy, "WORK", tmp_path)
-    (tmp_path / "data.compiled.json").write_text(json.dumps({"resources": [
-        {"type": "Microsoft.Sql/servers", "properties": {"publicNetworkAccess": sql_public}},
-    ]}), encoding="utf-8")
+    resource = {"type": "Microsoft.Sql/servers", "properties": {"publicNetworkAccess": sql_public}}
+    (tmp_path / "data.compiled.json").write_text(json.dumps({
+        "resources": {"sql": resource} if symbolic else [resource],
+    }), encoding="utf-8")
     execute = Mock(return_value='{"name":"containerapp"}')
     monkeypatch.setattr(deploy, "command", execute)
     monkeypatch.setattr(deploy, "context_files", Mock())

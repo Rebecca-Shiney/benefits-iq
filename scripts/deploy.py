@@ -233,12 +233,17 @@ def preflight(azure):
         command([azure.executable, "bicep", "build", "--file", str(ROOT / "infra" / f"{template}.bicep"),
                  "--outfile", str(WORK / f"{template}.compiled.json")])
     compiled = json_output((WORK / "data.compiled.json").read_text(encoding="utf-8"))
-    sql = [resource for resource in compiled.get("resources", [])
+    resources = compiled.get("resources") if isinstance(compiled, dict) else None
+    if isinstance(resources, dict):
+        resources = list(resources.values())
+    if not isinstance(resources, list) or not all(isinstance(resource, dict) for resource in resources):
+        raise DeploymentError("COMPILED_SQL_RESOURCE_SCHEMA_INVALID")
+    sql = [resource for resource in resources
            if resource.get("type", "").lower() == "microsoft.sql/servers"]
     if (len(sql) != 1 or sql[0].get("condition") is not None
             or sql[0].get("properties", {}).get("publicNetworkAccess") != "Disabled"
             or any(resource.get("type", "").lower() == "microsoft.sql/servers/firewallrules"
-                   for resource in compiled.get("resources", []))):
+                   for resource in resources)):
         raise DeploymentError("UNCONDITIONAL_PRIVATE_SQL_TEMPLATE_REQUIRED")
     policy_preflight(azure, private_sql=True)
     owner = azure.graph("GET", "/me", query={"$select": "id"})["id"]
