@@ -144,11 +144,23 @@ pending writes. A commit already begun cannot be undone by closing a stream:
 refresh authoritative state.
 
 These are **local implementation and mock/signed-token test results, not cloud
-integration evidence**. The SQL schema is in `infra/schema.sql`; a cloud image
-must supply ODBC Driver 18. Resource IaC, image build/push, Entra registration and
-role bootstrap, SQL principal/schema/seed setup, Search indexing and reproducible
-cloud readiness checks are not yet delivered. `azd up` must not be presented as
-working, nor `/health` liveness as proof of ready cloud connections.
+integration evidence**. The SQL schema is in `infra/schema.sql`. Prepared image
+definitions are `infra/Dockerfile.web` and `infra/Dockerfile.api`: official
+base-image manifests are digest-pinned, runtime users are non-root, and an
+allowlisted `.dockerignore` excludes local state, credentials and attachments.
+The API image installs Microsoft's official ODBC 18 package (accepting its EULA
+at build time), enforces Starter mode/tracing-off and formats library failures
+as metadata without raw provider messages or tracebacks. Operational error codes
+and traces remain observable.
+
+Docker is unavailable on the current host, so those images have **not** been
+built/run or remotely scanned. Full image/package validation must precede public
+exposure. Resource IaC, remote image build/push, Entra registration/role bootstrap,
+SQL principal/schema/seed setup, Search indexing and reproducible cloud readiness
+checks remain unfinished. Initial reviewer access needs an explicit approved
+object-ID/role/employer binding; deployment rights are not automatic clinical
+access. `azd up` must not be presented as working, nor `/health` liveness as proof
+of ready cloud connections.
 
 ### Security guarantees versus non-guarantees
 

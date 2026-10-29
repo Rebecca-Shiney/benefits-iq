@@ -176,8 +176,20 @@ OCR. Async workflow/model capabilities offload blocking I/O; committed
 authoritative changes still require refresh after disconnect. Tests use actual
 signed JWTs and mocked cloud/ODBC boundaries, not a deployed service.
 
-`infra/schema.sql` is initial idempotent DDL only. Bicep/resource templates,
-container build configuration, Entra/SQL permission bootstrap, synthetic source/
+`infra/schema.sql` is initial idempotent DDL only. Container definitions are now
+prepared in `infra/Dockerfile.web` / `infra/Dockerfile.api`, with digest-pinned
+official base-image manifests verified through Docker Hub metadata, non-root
+runtime users, an allowlisted `.dockerignore` and official ODBC 18 installation.
+`service/cloud_entrypoint.py` enforces Starter/tracing-off and formats raw library
+logs as sanitized metadata while retaining application error codes/traces.
+Formatter/mode guard tests pass, but Docker is absent: image build/run/scanning
+is not claimed. Current npm full/production audit remains zero.
+
+Explicit initial application access binding has been requested for user approval;
+do not infer a clinical role from the signed-in deployer's subscription authority.
+No Entra role has been assigned while this choice is pending.
+
+Bicep/resource templates, Entra/SQL permission bootstrap, synthetic source/
 PDF/index seeding, deployment/rerun diagnostics and live verification are still
 unfinished. SQL startup currently requires an initialized schema; setup must
 run before application startup, not rely on the runtime to create tables.
@@ -649,3 +661,12 @@ dependency and runtime-auth readiness gates must clear before public exposure.
   https://azure.microsoft.com/en-us/pricing/details/search/
   https://azure.microsoft.com/en-us/pricing/details/defender-for-cloud/
   https://prices.azure.com/api/retail/prices
+- Official container base-image metadata (digest-pinned after read-only lookup):
+  https://hub.docker.com/v2/repositories/library/node/tags/24-bookworm-slim
+  https://hub.docker.com/v2/repositories/library/python/tags/3.11-slim-bookworm
+- Official ODBC 18 Linux installation:
+  https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server
+- azd ACR remote-build support (no local Docker requirement):
+  https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/remote-builds
+- Azure Monitor diagnostic routing without a Log Analytics shared-key recipe:
+  https://learn.microsoft.com/en-us/azure/container-apps/log-options
