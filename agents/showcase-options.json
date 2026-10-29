@@ -1,0 +1,12 @@
+{
+  "prompts": ["Current status", "Check intake completeness", "Which criteria version applies?"],
+  "reasons": [
+    "Demo: the current synthetic evidence supports this example outcome.",
+    "Demo: additional synthetic information is required before review.",
+    "Demo: conflicting synthetic evidence needs further human review."
+  ],
+  "corrections": {
+    "prescriber": ["", "Synthetic Clinic"],
+    "prior_therapy": ["none", "Synthetic prior therapy"]
+  }
+}

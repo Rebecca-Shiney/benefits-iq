@@ -1,0 +1,31 @@
+FROM mcr.microsoft.com/azurelinux/base/python:3.12.15-3-azl3.0.20261027@sha256:b1142b387666a49adb1ca6707e39029e8ad229d04494abae23d16945008c31b6 AS runtime-base
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BENEFITS_PROFILE=showcase OTEL_SDK_DISABLED=true
+ENV PATH="/opt/venv/bin:${PATH}"
+RUN ACCEPT_EULA=Y tdnf install -y ca-certificates krb5 msodbcsql18 shadow-utils \
+    && tdnf clean all && useradd --system --uid 10001 --create-home benefits
+
+FROM runtime-base AS build
+RUN tdnf install -y python3-pip && tdnf clean all \
+    && /usr/bin/python3 -m venv --without-pip /opt/venv \
+    && /usr/bin/python3 -m pip --python /opt/venv install --no-cache-dir pip==26.2.2
+COPY requirements.lock.txt ./
+RUN python -m pip install --no-cache-dir --requirement requirements.lock.txt && python -m pip check
+COPY --chown=benefits:benefits service ./service
+COPY --chown=benefits:benefits agents ./agents
+COPY --chown=benefits:benefits infra/schema.sql infra/grant-runtime.sql ./infra/
+COPY tests/test_cloud_adapters.py tests/test_cloud_seed.py tests/test_entra_auth.py tests/test_identity_probe.py tests/test_showcase.py tests/test_cloud_acceptance.py tests/test_cloud_source_probe.py tests/test_sql_network_probe.py tests/test_cloud_entrypoint.py ./tests/
+RUN BENEFITS_PROFILE=local python -m pytest --quiet tests \
+    && python -c "import pyodbc; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers()" \
+    && python -m pip uninstall -y pip
+
+FROM runtime-base AS final
+RUN tdnf remove -y python3-pip python3-setuptools && tdnf clean all
+COPY --from=build /opt/venv /opt/venv
+COPY --from=build --chown=benefits:benefits /app/service ./service
+COPY --from=build --chown=benefits:benefits /app/agents ./agents
+COPY --from=build --chown=benefits:benefits /app/infra ./infra
+USER benefits
+RUN python -c "import importlib.util, agent_framework.ag_ui, agent_framework.openai, azure.identity, pyodbc, uvicorn; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers(); assert importlib.util.find_spec('pip') is None; assert importlib.util.find_spec('setuptools') is None"
+EXPOSE 8000
+CMD ["python", "-m", "service.cloud_entrypoint"]
