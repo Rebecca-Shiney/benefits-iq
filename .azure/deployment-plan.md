@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated: stricter chat-grounding revision, with frontend held private pending redeployment acceptance. Initial full Canadian private/public integration succeeded from be27ab0; the browser-discovered grounding correction requires matching read-only tools and explicit completeness/source results. Local SDK/tool tests and renewed read-only Azure/IaC/policy preflight pass. Fresh image/private/public/browser gates remain mandatory. No new resource/permission/region scope, policy bypass or deletion is authorized.**
+**Validated and deployed: the stricter required-read-tool revision completed all image/private/public gates at 2026-10-29T18:17:51Z, followed by actual public browser acceptance. Only Next.js ingress is public; Python is internal and SQL PNA remains Disabled/Entra-only. Genuine Canadian model/tool streaming, scoped Search/fresh OCR, SQL permissions and preserved synthetic workflow evidence are verified. No clinical decision was submitted by deployment/browser automation. Enterprise and end-user authenticated profiles remain future opt-in, not deployed integrations. No Fabric change, policy bypass or deletion occurred.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -786,6 +786,10 @@ policies require owner approval. Starter never resumes or changes capacity.
 
 ## 7. Validation Proof
 
+This section preserves staged execution history. Later dated acceptance below
+supersedes earlier pending statements; it does not retroactively turn local tests
+or earlier failed images/jobs into successful cloud evidence.
+
 Evidence date: **2026-10-29 UTC**. No provisioning had occurred at the initial validation.
 
 Validation scope is explicitly staged: first only the dedicated Canadian
@@ -1121,6 +1125,59 @@ After committed `2414e55`, all validation checks for the unchanged staged recipe
 
 Validation authorizes azure-deploy to repeat the bounded existing staged command,
 not to skip the renewed private/public model-read-tool gates.
+
+### Final required-tool deployment and browser acceptance, 2026-10-29
+
+The same environment/state and single entry command completed from source
+**`eb6369a` at 18:17:51 UTC**, without a new resource group or changed paid scope.
+Both fresh runtime images passed exact-digest secret/language/OS scan gates
+and the API image's installed-runtime tests:
+- API: `sha256:282f614908fa807e605b3a8e5245a352fb717bfeaffbe047ff6aa5141dd62039`.
+- Web: `sha256:1c3a3377140299f9290d64e23f5b7fe6d51b737730762e07e8134a44ac4300de`.
+
+The ignored state records new-image receipts, not cached older acceptance:
+- `p-biq-benefits-iq-bb2168f95c9d-ytoboh9`: actual MI issuance/signature/claims
+  and wrong tenant/audience/client/principal denials.
+- `n-q-biq-benefits-iq-bb2168f95c9d-ns3zilq`: only approved-subnet SQL DNS and
+  TLS-verified ODBC MI login, no schema writes by the probe.
+- `n-s-biq-benefits-iq-bb2168f95c9d-v7meup1`: 17 source records, 12 synthetic
+  PDFs, three criteria and six separate aggregate cells; preserved existing state.
+- `n-r-biq-benefits-iq-bb2168f95c9d-k53wjaf`: runtime SQL permissions, source
+  PDF, scoped live Search and fresh OCR, no case mutation.
+- `n-v-biq-benefits-iq-bb2168f95c9d-9b95591`: new strict private acceptance.
+- `n-v-biq-benefits-iq-bb2168f95c9d-wphv24b`: repeated strict acceptance after
+  public frontend exposure.
+
+Both acceptance receipts include `required_case_bound_read_tools`,
+`real_model_agui_stream`, `chat_read_only`, `selected_view_shapes` and
+`direct_upload_send_create_rejection`. They reused the earlier real saved
+intake/evidence (`workflow_write_exercised=false`) and submitted no clinical
+decision. A fresh workflow write is not falsely counted on these reruns.
+
+Actual ARM/SQL reads confirm web external=true and API external=false, both
+Succeeded; SQL public network Disabled and Entra-only true. The model remains
+regional Standard20 `gpt-4.1-mini` version `2025-04-14`, `NoAutoUpgrade`.
+No model/region fallback, application secret, additional role grant or policy
+exception was introduced by the grounding correction.
+
+Live public URL:
+https://web-biq-benefits-iq-bb2168f95c9d.kindground-2f9b9bf8.canadaeast.azurecontainerapps.io
+
+The shared browser `benefits-iq-cloud` verifies real preset chat: complete intake
+with no missing/uncertain fields and source version `form-v1`, then exact
+`criteria-alpha-v1` matching the saved brief. Actual cancel/explicit retry works.
+Case 001 remains version 3, decision null; no chat local-storage keys. A separate
+real-browser run verifies native Arrow/Tab/Enter view entry, contact minimal shape,
+all four reviewer/employer variants, public warning and 390px no-overflow/no-file
+control. These are bounded usability/accessibility checks, not certification.
+
+Application source is persisted on the existing feature branch; documentation
+is updated after acceptance and is not falsely claimed to require a new runtime
+image. Historical source/model/grounding blockers are resolved for this showcase.
+Future authenticated enrollment, Enterprise connectors/governance, real-data
+compliance, later model migration, production operations and destructive cleanup
+remain separate scopes. Preserve original environment/shared resources and the
+ignored state; charges continue. No ongoing monitor or automation was scheduled.
 
 ## 8. Implementation and rerun plan
 

@@ -19,14 +19,13 @@ standing capacity cost, improve reuse and one-command setup, and retain core
 managed-identity service authentication, constrained demo views, audit and
 explicit human-action controls. Anonymous demo views are not authenticated roles.
 
-**Status: initial Canadian private/public integration acceptance passed on
-October 29, 2026; frontend temporarily returned to private ingress during
-browser-discovered chat-grounding correction and reacceptance.**
-Reserved [showcase URL](https://web-biq-benefits-iq-bb2168f95c9d.kindground-2f9b9bf8.canadaeast.azurecontainerapps.io)
-is unavailable during this hold. When enabled, no visitor credentials are
-required. Never enter real personal or health data. Python ingress remains internal.
+**Status: deployed public synthetic showcase; strict private/public integration
+and browser acceptance passed on October 29, 2026.**
+[Open Benefits IQ](https://web-biq-benefits-iq-bb2168f95c9d.kindground-2f9b9bf8.canadaeast.azurecontainerapps.io).
+No visitor credentials are required. Never enter real personal or health data.
+Python ingress remains internal; only the controlled Next.js frontend is public.
 
-The full `scripts/deploy.py` entry completed from application commit `be27ab0`,
+The full `scripts/deploy.py` entry completed from source commit `eb6369a`,
 including exact-digest runtime image scans, actual web managed-identity
 positive/four-negative proof, private DNS/TLS/MI SQL, preserved synthetic seeding,
 runtime permission boundaries, source PDFs, governed Search and fresh OCR.
@@ -42,7 +41,10 @@ case: optional tool use and an ambiguous empty missing-field list were insuffici
 grounding. The corrected showcase requires the matching read-only tool for each
 preset and returns explicit completeness/source fields. Actual installed-SDK tests
 verify named tool dispatch, scoped execution, structured results and the SDK's
-reset to automatic tool choice for the final answer; live reacceptance is pending.
+reset to automatic tool choice for the final answer. Fresh cloud acceptance now
+requires matching tool start/end for both status and intake; both private and
+post-public runs passed. The browser then correctly reported complete intake,
+cited the actual saved criteria version, and preserved the authoritative case.
 Model prose is still advisory; authoritative UI/evidence takes precedence.
 The local loopback demo remains available. Paid resources are now running;
 this is still a synthetic showcase, not a production or healthcare-compliance claim.
@@ -50,7 +52,7 @@ this is still a synthetic showcase, not a production or healthcare-compliance cl
 | Profile | Intended scope | Current implementation status |
 |---|---|---|
 | Local demo | Credential-free synthetic workflow, SQLite, deterministic MAF/AG-UI and explicit demo personas | Working local application; not Entra or cloud services |
-| Showcase (default cloud) | Public selectable synthetic views; real Next.js/Python, regional inference, governed Search, OCR and durable Azure SQL; exact managed-identity backend caller | Initial MI/data/model/private/public acceptance passed; currently private pending stricter named-read-tool grounding reacceptance |
+| Showcase (default cloud) | Public selectable synthetic views; real Next.js/Python, regional inference, governed Search, OCR and durable Azure SQL; exact managed-identity backend caller | Deployed; actual MI/data/model/required-read-tool/private/public and browser acceptance passed |
 | Authenticated Starter (future opt-in) | Entra user roles/employer bindings plus managed-identity service calling | Retained signed-token/MSAL implementation and local tests; user registration/assignments/bootstrap and live verification are not implemented |
 | Enterprise (opt-in) | Actual Fabric/OneLake, aggregate-only employer semantic model, Purview and customer-specific policies | Planned integration profile only; not connected or verified |
 
@@ -311,16 +313,16 @@ showcase. No initial reviewer or Hira assignment is created or required.
 caller path now has actual MI issuance/signature/claim proof and successful
 independently authorized API calls.
 
-**Deployment evidence (October 29, 2026, completed 17:26:48 UTC):**
+**Latest deployment evidence (October 29, 2026, completed 18:17:51 UTC):**
 
 | Actual execution | Verified outcome |
 |---|---|
-| `p-biq-benefits-iq-bb2168f95c9d-4ia6pev` | Web MI caller positive proof plus wrong tenant/audience/client/principal denials |
-| `n-q-biq-benefits-iq-bb2168f95c9d-4loqd1v` | Private-only SQL DNS and TLS-verified MI login |
-| `n-s-biq-benefits-iq-bb2168f95c9d-pq11q59` | 17 source records, 12 synthetic PDFs, three criteria and six aggregate cells |
-| `n-r-biq-benefits-iq-bb2168f95c9d-81cnmd4` | Runtime SQL permissions/PDF, live scoped Search and fresh OCR |
-| `n-v-biq-benefits-iq-bb2168f95c9d-2g0xbim` | Private application acceptance including genuine model streaming |
-| `n-v-biq-benefits-iq-bb2168f95c9d-o0v5m1a` | Repeated application acceptance after public frontend exposure |
+| `p-biq-benefits-iq-bb2168f95c9d-ytoboh9` | Web MI caller positive proof plus wrong tenant/audience/client/principal denials |
+| `n-q-biq-benefits-iq-bb2168f95c9d-ns3zilq` | Private-only SQL DNS and TLS-verified MI login |
+| `n-s-biq-benefits-iq-bb2168f95c9d-v7meup1` | 17 source records, 12 synthetic PDFs, three criteria and six aggregate cells |
+| `n-r-biq-benefits-iq-bb2168f95c9d-k53wjaf` | Runtime SQL permissions/PDF, live scoped Search and fresh OCR |
+| `n-v-biq-benefits-iq-bb2168f95c9d-9b95591` | Private application acceptance including actual required-tool/model streams |
+| `n-v-biq-benefits-iq-bb2168f95c9d-wphv24b` | Same strict acceptance after public frontend exposure |
 
 Both acceptance jobs report no submitted clinical decision and no case mutation
 by chat. On this recovery run, `workflow_write_exercised` is false because the
@@ -330,8 +332,19 @@ The receipt name `private_cloud_acceptance_complete` is shared by the same
 internal acceptance harness in both ingress phases; it is not an external-browser result.
 The authoritative non-secret resource IDs, immutable image digests and receipts
 are in ignored `.azure/showcase-benefits-iq.json`; do not commit token caches.
-Accepted API digest: `sha256:f043a23966a1ff0c0c13b738f4467e6c82514ad46592f4baf3ec98a6c5a2215b`.
-Accepted web digest: `sha256:26b647c433fdc6f98ae1ac9f0e3dfa13cfb743948a8a466f0f06f6c6d6479cde`.
+Accepted API digest: `sha256:282f614908fa807e605b3a8e5245a352fb717bfeaffbe047ff6aa5141dd62039`.
+Accepted web digest: `sha256:1c3a3377140299f9290d64e23f5b7fe6d51b737730762e07e8134a44ac4300de`.
+
+The shared public browser additionally verified native keyboard view selection,
+Tab focus order and workspace entry, minimal contact shape, both employers'
+aggregate-only screens, both reviewer views and 390px mobile geometry. Actual
+model chat correctly read complete intake and `criteria-alpha-v1`, supported
+cancel plus explicit retry, and left case 001 at version 3 with no decision.
+No upload control or chat local-storage entry exists. These are bounded
+acceptance observations, not a comprehensive accessibility/compliance audit.
+Latest full local Python run: **295 passed, 11 optional HTTP skips**; fresh full
+npm audit: **zero known vulnerabilities**. Actual image scans also passed;
+package audit alone is not image or live-integration proof.
 
 **Future collaborator onboarding:** GitHub access and application/clinical
 authorization are separate. The public showcase intentionally grants no
