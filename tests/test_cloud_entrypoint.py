@@ -26,6 +26,23 @@ def test_approved_operational_metadata_remains_observable():
     assert "code=SEARCH_UNAVAILABLE" in output["message"] and "trace=trace-1" in output["message"]
 
 
+@pytest.mark.parametrize("code", ["InvalidApiVersionParameter", "SYN-sensitive-value"])
+def test_nested_provider_status_is_observable_without_response_or_unknown_code(code):
+    inner = RuntimeError("synthetic private provider response")
+    inner.status_code = 400
+    inner.body = {"code": code, "message": "synthetic private provider response"}
+    wrapper = RuntimeError("synthetic private wrapper")
+    wrapper.__cause__ = inner
+    record = logging.LogRecord("agent_framework", logging.ERROR, "", 1,
+                               "synthetic private prompt", (), (RuntimeError, wrapper, None))
+    output = SafeFormatter().format(record)
+    parsed = json.loads(output)
+    assert parsed["upstream_status"] == 400
+    assert "private" not in output and "SYN-sensitive-value" not in output
+    assert parsed.get("upstream_code") == ("InvalidApiVersionParameter" if code in {
+        "InvalidApiVersionParameter"} else None)
+
+
 def test_cloud_entrypoint_cannot_start_local_demo(monkeypatch):
     monkeypatch.setenv("BENEFITS_PROFILE", "local")
     with pytest.raises(RuntimeError, match="CLOUD_ENTRYPOINT_REQUIRES_STARTER"):

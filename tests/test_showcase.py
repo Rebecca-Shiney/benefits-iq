@@ -219,14 +219,15 @@ def test_finite_public_task_and_evidence_growth(public_client, key):
 
 def test_public_model_uses_installed_sdk_limits_and_individually_bounded_tools(monkeypatch):
     from unittest.mock import Mock
-    from agent_framework.openai import OpenAIChatClient
+    from agent_framework.openai import OpenAIChatCompletionClient
     from service import agents, azure_services
     monkeypatch.setenv("BENEFITS_PROFILE", "showcase")
     monkeypatch.setenv("BENEFITS_MODEL_DEPLOYMENT", "synthetic-test")
     monkeypatch.setenv("BENEFITS_MODEL_ENDPOINT", "https://synthetic.openai.azure.com")
-    actual_client = OpenAIChatClient(api_key="synthetic-test-not-a-credential", model="not-used")
+    actual_client = OpenAIChatCompletionClient(api_key="synthetic-test-not-a-credential", model="not-used")
     monkeypatch.setattr(azure_services, "credential", lambda: None)
-    monkeypatch.setattr(agents, "OpenAIChatClient", lambda **kwargs: actual_client)
+    factory = Mock(return_value=actual_client)
+    monkeypatch.setattr(agents, "OpenAIChatCompletionClient", factory)
     captured = Mock()
     monkeypatch.setattr(agents, "Agent", captured)
     context = agents.request_context.set((showcase.selected_view("reviewer-a"), "SYN-CASE-001"))
@@ -235,6 +236,10 @@ def test_public_model_uses_installed_sdk_limits_and_individually_bounded_tools(m
     finally:
         agents.request_context.reset(context)
     config = actual_client.function_invocation_configuration
+    assert factory.call_args.kwargs == {
+        "model": "synthetic-test", "azure_endpoint": "https://synthetic.openai.azure.com",
+        "credential": None, "api_version": "2024-10-21",
+    }
     assert config["max_iterations"] == 2 and config["max_function_calls"] == 3
     assert config["allow_concurrent_invocation"] is False and config["include_detailed_errors"] is False
     assert config["max_duration_seconds"] == 45.0
@@ -242,6 +247,42 @@ def test_public_model_uses_installed_sdk_limits_and_individually_bounded_tools(m
     tools = captured.call_args.kwargs["tools"]
     assert {tool.name for tool in tools} == {"get_case_status", "read_intake_completeness", "read_criteria_version"}
     assert all(tool.max_invocations == 1 for tool in tools)
+
+
+def test_cloud_model_uses_stateless_chat_completions_not_the_responses_endpoint():
+    import asyncio
+    import httpx
+    from openai import AsyncAzureOpenAI
+    from agent_framework.openai import OpenAIChatCompletionClient
+
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json={
+            "id": "chatcmpl-synthetic", "object": "chat.completion", "created": 1,
+            "model": "synthetic-deployment",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Synthetic response"},
+                         "finish_reason": "stop"}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as transport:
+            sdk = AsyncAzureOpenAI(azure_endpoint="https://synthetic.openai.azure.com",
+                                   api_version="2024-10-21", api_key="synthetic-test-not-a-credential",
+                                   http_client=transport)
+            client = OpenAIChatCompletionClient(model="synthetic-deployment", async_client=sdk)
+            result = await client.get_response("Synthetic probe", options={"store": False, "max_tokens": 500})
+            assert result.text == "Synthetic response"
+
+    asyncio.run(run())
+    assert len(requests) == 1
+    assert requests[0].url.path == "/openai/deployments/synthetic-deployment/chat/completions"
+    assert requests[0].url.params["api-version"] == "2024-10-21"
+    payload = json.loads(requests[0].content)
+    assert payload["store"] is False
+    assert payload.get("max_completion_tokens", payload.get("max_tokens")) == 500
+    assert "messages" in payload and "input" not in payload
 
 
 def test_write_budget_precedes_mutation(public_client, key):

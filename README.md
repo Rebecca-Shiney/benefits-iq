@@ -30,7 +30,13 @@ Actual probes verified private-only SQL resolution, managed-identity login,
 runtime permission boundaries, source documents, governed Search and fresh OCR.
 The first private application acceptance stopped on its incorrect expectation
 of 404 rather than the API's correct 405 rejection of case creation; that test
-contract is corrected, not a bypass of the denial. Real model/streaming, remaining
+contract is corrected, not a bypass of the denial. A subsequent run persisted
+intake/evidence successfully but exposed a model-client protocol mismatch:
+the installed MAF `OpenAIChatClient` uses Responses, not Chat Completions.
+The cloud path now explicitly uses its supported `OpenAIChatCompletionClient`
+with the stable Azure API, unchanged regional model and managed identity.
+Actual SDK HTTP-contract coverage verifies the stateless, bounded request;
+fresh cloud inference verification remains pending. Real model/streaming, remaining
 view/negative checks and browser/public acceptance are not yet claimed complete.
 Existing resources incur charges while held privately.
 The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
@@ -176,6 +182,7 @@ than introducing a new storage account or capacity dependency.
 | Staged Python/Azure CLI/Bicep entry instead of proposed azd hooks | Make identity/image/private-acceptance gates explicit and resumable | We maintain the small deployment orchestrator; no `azd up` support is claimed |
 | Standard managed ACR builds, with build-location uncertainty explicitly accepted by the user | No local Linux builder; reduce additional setup and builder cost | Canadian build execution is unverified; this narrow source/image exception does not change Canadian workload-data/inference requirements |
 | User-approved private SQL endpoint/DNS and new Canadian VNet-integrated Consumption environment | Respect the inherited policy disabling public SQL; the existing environment cannot change network type | Approximately US$35-US$50/month additional networking; retain old resources, no exemption or public SQL re-enablement. Private DNS is a non-regional infrastructure name-resolution service, not a Canadian data-store guarantee |
+| Explicit MAF Chat Completions client for the Canadian cloud model | The installed generic-named `OpenAIChatClient` uses Responses and is incompatible with the retained stable Chat Completions API route | Keep genuine MAF tools/streaming and `store: false`; no managed conversation/Responses state, model-region fallback or application secret |
 | Distroless Node 24 and Azure Linux 3 / Python 3.12 runtime candidates | Remove known High/Critical paths found in the prior Debian runtime candidates without broad vulnerability ignores | Local Python remains 3.11-compatible; actual final images, ODBC/native packages and Python 3.12 behavior still require build/run/scan acceptance |
 
 ### Chat replacement and adding CopilotKit back

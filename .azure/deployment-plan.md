@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated and partially executed: approved private-SQL revision. Canadian networking, private DNS/MI SQL, synthetic seeding, runtime permissions and fresh Search/OCR proofs have succeeded; both applications exist privately. First private application acceptance stopped on an incorrect 404-versus-405 rejection expectation, now corrected. Model/streaming, remaining application/public/browser acceptance are incomplete; no public URL exists. Inherited policy remains enforced, old resources preserved, and Enterprise governance gated.**
+**Validated and partially executed: approved private-SQL revision. Canadian networking, private DNS/MI SQL, seeding, runtime permissions, fresh Search/OCR and durable intake/evidence writes have succeeded; both applications remain private. The case-creation rejection contract is corrected. Real model streaming exposed an installed SDK Responses/Chat Completions mismatch; the compatible stateless client is now selected and HTTP-contract tested, pending cloud reacceptance. No public URL exists. Inherited policy remains enforced, old resources preserved, and Enterprise governance gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -1037,6 +1037,26 @@ before any public ingress. No clinical decision has been submitted.
 Latest full local Python run: 284 pass, 11 optional HTTP skips. Full npm audit:
 zero known vulnerabilities. These do not replace the remaining real model,
 streaming, view-shape, negative-route and browser/public acceptance gates.
+
+The subsequent full rollout reached genuine durable workflow execution:
+`n-v-biq-benefits-iq-bb2168f95c9d-6xjrjmy` performed intake completeness and saved
+a cited evidence brief, then stopped on `CLOUD_ACCEPTANCE_STREAM_NOT_SUCCESSFUL`.
+Private API metadata identified `ChatClientException`, without logging prompts,
+tokens or provider response bodies. No clinical decision was written.
+
+Inspection of the **installed** Agent Framework classes established that
+`OpenAIChatClient` routes through Responses even though its name suggests chat.
+The cloud code supplied the stable `2024-10-21` Chat Completions API version.
+Use the installed supported `OpenAIChatCompletionClient` explicitly instead:
+same approved Canada East Standard model, endpoint, exact API MI and genuine
+MAF/AG-UI/tool chain; unchanged 500-token/no-store/per-tool/iteration/concurrency
+limits. No new dependency, model, region or credential is introduced.
+An actual SDK HTTP mock verifies `/openai/deployments/<deployment>/chat/completions`,
+the stable API version, messages (not Responses input), `store: false` and token
+budget. The local future OpenAI path is unchanged. Privacy-safe provider logs
+now permit only numeric HTTP status and allowlisted error codes through nested
+exceptions, never freeform provider errors or unknown codes. Fresh image tests/
+scans and real regional model acceptance remain required before exposure.
 
 ## 8. Implementation and rerun plan
 

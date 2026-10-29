@@ -5,7 +5,7 @@ from contextvars import ContextVar
 from pathlib import Path
 
 from agent_framework import Agent, AgentResponse, AgentResponseUpdate, BaseAgent, Content, Message, ResponseStream, tool
-from agent_framework.openai import OpenAIChatClient
+from agent_framework.openai import OpenAIChatClient, OpenAIChatCompletionClient
 
 from . import domain
 from .store import audit, connection
@@ -112,7 +112,7 @@ def model_agent():
     prompt = (Path(__file__).parent.parent / "agents" / "orchestrator.md").read_text()
     if cloud():
         from .azure_services import credential, endpoint
-        client = OpenAIChatClient(
+        client = OpenAIChatCompletionClient(
             model=os.environ["BENEFITS_MODEL_DEPLOYMENT"],
             azure_endpoint=endpoint("BENEFITS_MODEL_ENDPOINT", "openai.azure.com"),
             credential=credential(), api_version="2024-10-21",

@@ -23,7 +23,7 @@ WORK = ROOT / ".azure"
 TEMPLATES = ("foundation", "job", "data", "network", "hosting")
 IMAGE_TESTS = ("test_cloud_adapters.py", "test_cloud_seed.py", "test_entra_auth.py",
                "test_identity_probe.py", "test_showcase.py", "test_cloud_acceptance.py",
-               "test_cloud_source_probe.py", "test_sql_network_probe.py")
+               "test_cloud_source_probe.py", "test_sql_network_probe.py", "test_cloud_entrypoint.py")
 ROOT_CONTEXT = ("package.json", "package-lock.json", "requirements.lock.txt", "next.config.mjs",
                 "next-env.d.ts", "tsconfig.json", ".dockerignore")
 INFRA_CONTEXT = ("Dockerfile.api", "Dockerfile.web", "schema.sql", "grant-runtime.sql")

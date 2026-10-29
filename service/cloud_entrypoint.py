@@ -2,6 +2,13 @@ import json
 import logging
 import os
 
+SAFE_UPSTREAM_CODES = frozenset({
+    "BadRequest", "DeploymentNotFound", "PermissionDenied", "Unauthorized",
+    "InvalidApiVersionParameter", "OperationNotSupported", "RateLimitReached",
+    "invalid_request_error", "unsupported_parameter", "invalid_value",
+    "rate_limit_exceeded", "content_filter",
+})
+
 
 class SafeFormatter(logging.Formatter):
     def format(self, record):
@@ -12,6 +19,18 @@ class SafeFormatter(logging.Formatter):
             event["event"] = "library_error" if record.levelno >= logging.ERROR else "library_status"
         if record.exc_info and record.exc_info[0]:
             event["exception_type"] = record.exc_info[0].__name__
+            error, visited = record.exc_info[1], set()
+            while isinstance(error, BaseException) and id(error) not in visited and len(visited) < 8:
+                visited.add(id(error))
+                status = getattr(error, "status_code", None)
+                if type(status) is int and 400 <= status <= 599:
+                    event["upstream_status"] = status
+                body = getattr(error, "body", None)
+                code = body.get("code") if isinstance(body, dict) else None
+                if isinstance(code, str) and code in SAFE_UPSTREAM_CODES:
+                    event["upstream_code"] = code
+                error = (getattr(error, "inner_exception", None)
+                         or error.__cause__ or error.__context__)
         return json.dumps(event)
 
 
