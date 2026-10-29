@@ -224,8 +224,10 @@ and traces remain observable.
 Docker is unavailable on the current host; approved managed builds are being
 used instead. The first complete API image built, but its final-image scan
 found vulnerable bundled Python tooling absent from the application lockfile
-audit. Unused pip/setuptools removal and a clean replacement-image scan remain
-acceptance gates. Candidate distroless Node 24 and Microsoft Azure Linux 3 Python
+audit. Removing unused system/venv pip and setuptools resolved those findings:
+the replacement API image passed its exact-digest scan and final non-root
+SDK/ODBC assertions. The frontend image and live identity/data/model proofs
+remain acceptance gates. Candidate distroless Node 24 and Microsoft Azure Linux 3 Python
 3.12 base scans are **not final-image results**. Full image/package and secret
 scanning must precede public exposure; incomplete or wrong-digest scan reports
 fail closed.

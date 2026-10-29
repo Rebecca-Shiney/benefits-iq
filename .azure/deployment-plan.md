@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated: minimal foundation/build-bootstrap phase only. Foundation resources are created; build/private-proof execution is in progress. No application/data services or public URL are deployed. Enterprise governance remains gated.**
+**Validated: corrected minimal foundation/private-proof phase only. Foundation resources are created, the replacement API image passed its scan, and the private job passed renewed provider validation/what-if. No application/data services or public URL are deployed. Enterprise governance remains gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -90,14 +90,15 @@ No role/consent/credential/owner grant is added to bypass a refusal. Discovery
 errors or ownership/configuration collisions stop rather than create fallbacks.
 Actual image/receipt association is checked; no substring-only success test.
 
-All four Bicep entry templates compile. Local suite: 247 passed, 11 optional
+All four Bicep entry templates compile. Local suite: 249 passed, 11 optional
 HTTP tests skipped in the full unit run; those 11 then passed separately against
 the existing local preview. Full npm and locked Python audits report no known
 vulnerabilities. Candidate distroless Node24 and Azure Linux3/Python3.12 base
 scans have no High/Critical findings, but are not final-image acceptance.
 The first complete API build passed its Python 3.12 tests/ODBC check, then its
 final-image scan blocked on bundled tooling. Removing unused system/venv
-pip/setuptools and scanning the replacement remain mandatory before publication.
+pip/setuptools resolved those findings in the replacement API image. Its
+exact-digest scan passed; the frontend image and live identity proof remain gates.
 The owned API audience and Canadian foundation now exist; no application is
 deployed or live-verified. See the execution evidence below.
 
@@ -787,8 +788,10 @@ validation. This does not claim that unavailable local Docker already built them
   - [x] Bicep compilation: foundation/job/data/hosting compile; foundation now explicitly unwraps module outputs into the bootstrap's expected shape.
   - [x] Template validation: `az deployment sub validate --location canadaeast --template-file infra\foundation.bicep --parameters environmentName=benefits-iq environmentId=bb2168f9-5c9d-4961-9960-f4932b863161 --validation-level Provider --subscription 85489118-9695-41ac-ba0f-e14ba8837c91`; Succeeded, error null.
   - [x] What-if: same subscription/template/parameters with `az deployment sub what-if --validation-level Provider --no-pretty-print --result-format ResourceIdOnly`; Succeeded, error null, eight creates, no deletes. Three ACR role-assignment IDs are Unsupported because new identity principal IDs do not yet exist; static roles/scopes were checked and actual assignments/pulls must be proved after foundation creation. This is a preview limitation, not claimed runtime authorization proof.
-  - [x] Project build: `npm run build`, `npm run typecheck`; 21 Node protocol/request tests pass. Python 247 unit tests pass; 11 real local HTTP tests separately pass; 68 targeted bootstrap/identity/source/acceptance tests pass. Browser 14 pass, one optional screenshot capture skipped. Full npm and isolated locked Python audits report no known vulnerabilities.
+  - [x] Project build: `npm run build`, `npm run typecheck`; 21 Node protocol/request tests pass. Latest Python run: 249 pass, 11 optional HTTP skips; those 11 previously passed separately against the preserved preview. Latest targeted bootstrap/identity/source/acceptance suite: 70 pass. Browser 14 pass, one optional screenshot capture skipped. Full npm and isolated locked Python audits report no known vulnerabilities.
   - [x] Azure Policy: actual CLI assignment read (Azure MCP is unavailable) shows the same three database-protection initiatives, no discovered denial. Provider-level foundation validation succeeds; policy-driven SQL Defender remains in the allowance and cannot be disabled.
+  - [x] Renewed private job validation at `2026-10-29T14:34:03Z`: `az deployment group validate` and `what-if --validation-level Provider --result-format ResourceIdOnly --no-pretty-print` for `infra\job.bicep`, actual stored foundation/identity IDs and accepted API digest. Both Succeeded, errors null; one job Create, seven existing-resource Ignore entries, no deletion. Corrected AVM's CPU input to string `'0.5'`, not a JSON float. Local evidence: `.azure\identity-job-validation.json` (ignored). Subscription policy read still returns the three protection initiatives; an empty RG listing was not treated as absence of inherited policy.
+  - [x] Real API build `cw5`, digest `sha256:e29d294ce5194d6604e72efa5b7a78c104a2f7a17bf7fdc149197a58fdf6306d`: build tests/ODBC and final non-root SDK imports/no-packaging-tools assertions pass. Exact-digest Trivy acceptance passes with OS and language results, no blocking language vulnerabilities/secrets or High/Critical OS findings. No suppression/waiver.
 - [ ] Data/app phase provider validation/what-if using actual foundation IDs.
 - [ ] Both built runtime image scans, private MI/source/model acceptance, then public/browser checks.
 
@@ -842,7 +845,10 @@ lockfile audit. The Dockerfile removes unused system and venv packaging tools,
 then verifies installed SDK imports and ODBC as the final non-root user.
 No finding waiver or broad exclusion is used. Scans reject every secret match
 and known language-package vulnerability; the OS threshold remains High/Critical.
-The replacement image must pass before any proof job or data-service deployment.
+The replacement API image passed as recorded above. The private proof job
+initially failed provider validation before creation because AVM expects its CPU
+parameter as a string; the corrected template now passes validation/what-if.
+Live token issuance and the frontend build remain outstanding.
 
 Final images, private MI/source/model proofs, data services and public/browser
 cloud acceptance remain outstanding. The existing foundation can incur registry/

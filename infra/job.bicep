@@ -49,7 +49,7 @@ module job 'br/public:avm/res/app/job:0.7.2' = {
         image: '${registryEndpoint}/benefits-api@${imageDigest}'
         command: ['python', '-m', commands[purpose]]
         env: [for entry in items(fixedEnvironment): { name: entry.key, value: string(entry.value) }]
-        resources: { cpu: json('0.5'), memory: '1Gi' }
+        resources: { cpu: '0.5', memory: '1Gi' }
       }
     ]
     enableTelemetry: false
