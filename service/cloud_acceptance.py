@@ -88,7 +88,7 @@ def frontend_checks(client):
     expect(client.post("/api/chat", json={"messages": [{
         "id": str(uuid4()), "role": "user", "content": "not an approved public preset",
     }]}, headers={"X-Benefits-Case": "SYN-CASE-001"}), 422)
-    expect(client.post("/api/backend/cases", json={}), 404)
+    expect(client.post("/api/backend/cases", json={}), 405)
     expect(client.post("/api/backend/cases/SYN-CASE-001/communication",
                        json={"text": "Demo preview only", "confirmed": True}), 403)
     expect(client.post("/api/backend/cases/SYN-CASE-001/form",
@@ -132,7 +132,7 @@ def main():
             "X-Benefits-User": "reviewer-a", "X-Benefits-Runtime-Authorization": authorization,
         }
         expect(direct.get(backend + "/api/cases", headers=headers))
-        expect(direct.post(backend + "/api/cases", headers=headers, json={}), 404)
+        expect(direct.post(backend + "/api/cases", headers=headers, json={}), 405)
         expect(direct.post(backend + "/api/cases/SYN-CASE-001/communication", headers=headers,
                            json={"text": "Demo preview only", "confirmed": True}), 403)
         expect(direct.post(backend + "/api/public-program", headers=headers,

@@ -86,7 +86,7 @@ def test_acceptance_preserves_human_state_and_does_not_repeat_workflow_on_reruns
         if path.endswith("/form"):
             return httpx.Response(415)
         if path == "/api/backend/cases":
-            return httpx.Response(403 if request.method == "GET" else 404)
+            return httpx.Response(403 if request.method == "GET" else 405)
         if path.endswith("/aggregate"):
             return httpx.Response(200, json={"dataset": "synthetic-aggregate", "members": 100})
         if path.endswith("/SYN-CASE-001"):

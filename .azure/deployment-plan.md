@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated: approved private-SQL data/network IaC phase. Actual-ID Provider validation and what-if pass for both revised templates, with no deletion; inherited policy remains enforced. Partial Canadian data provisioning exists; no network, seed, application hosting or public URL is deployed yet. The user approved the bounded Canadian VNet/private endpoint/private DNS/new VNet-integrated Consumption environment and US$35-US$50/month incremental allowance. Fresh exact-image scans and live private SQL/source/model/application acceptance remain enforced deployment gates. Enterprise governance remains gated.**
+**Validated and partially executed: approved private-SQL revision. Canadian networking, private DNS/MI SQL, synthetic seeding, runtime permissions and fresh Search/OCR proofs have succeeded; both applications exist privately. First private application acceptance stopped on an incorrect 404-versus-405 rejection expectation, now corrected. Model/streaming, remaining application/public/browser acceptance are incomplete; no public URL exists. Inherited policy remains enforced, old resources preserved, and Enterprise governance gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -998,6 +998,45 @@ before every ARM create, rejecting any Delete preview. Hosting is validated
 again against the actual new environment before creation. Continue through
 azure-deploy within the approved bounded revision; do not broaden paid scope
 or expose the frontend before live gates pass.
+
+### Actual private-network/data execution and acceptance recovery
+
+The approved single-entry rollout resumed from committed `b51b243`. Both new
+runtime images passed exact-digest vulnerability/secret acceptance, and the
+real web-MI positive/four-negative proof repeated successfully. Data redeployment
+succeeded with SQL PNA Disabled and no Azure-services firewall rule. The new
+Canada East VNet, endpoint, DNS and `cae-vnet-biq-benefits-iq-bb2168f95c9d`
+Consumption environment succeeded; its actual infrastructure subnet is the
+owned `vnet-biq-benefits-iq-bb2168f95c9d/subnets/apps`. No old environment or
+resource was deleted and no governance control was bypassed.
+
+Actual persisted receipts:
+- `n-q-biq-benefits-iq-bb2168f95c9d-zten2hj`: private DNS resolves to exactly one
+  approved-subnet address; TLS-verified ODBC managed-identity SQL login succeeds;
+  no schema change by this probe.
+- `n-s-biq-benefits-iq-bb2168f95c9d-1centht`: synthetic setup succeeds with 17
+  source records, 12 generated fixture documents, three criteria and six
+  separate aggregate cells.
+- `n-r-biq-benefits-iq-bb2168f95c9d-mgog689`: runtime SQL permissions, source
+  binary document, live scoped Search and fresh Document Intelligence extraction
+  pass without case mutation. This also proves the configured contained runtime
+  SQL identity works, rather than only asserting SID/driver compatibility.
+- Live RBAC verification finds exactly five expected data-service grants across
+  Search/OCR/model: setup index/service administration, API reader/OCR/inference;
+  web has no data-service grant. Three actual registry AcrPull grants remain.
+
+The private frontend/API were created. Acceptance execution
+`n-v-biq-benefits-iq-bb2168f95c9d-ih9rsz3` stopped before model/workflow checks:
+`CLOUD_ACCEPTANCE_UNEXPECTED_HTTP_405_EXPECTED_404`. The GET-only `/api/cases`
+resource correctly rejects POST with 405. Acceptance mistakenly required 404;
+both direct and proxied contracts now require 405, with actual FastAPI regression
+coverage. No operation was enabled or denial waived to pass the test.
+Rebuild/scan the changed API acceptance artifact and repeat private acceptance
+before any public ingress. No clinical decision has been submitted.
+
+Latest full local Python run: 284 pass, 11 optional HTTP skips. Full npm audit:
+zero known vulnerabilities. These do not replace the remaining real model,
+streaming, view-shape, negative-route and browser/public acceptance gates.
 
 ## 8. Implementation and rerun plan
 

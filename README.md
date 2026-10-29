@@ -19,13 +19,20 @@ standing capacity cost, improve reuse and one-command setup, and retain core
 managed-identity service authentication, constrained demo views, audit and
 explicit human-action controls. Anonymous demo views are not authenticated roles.
 
-**Status: partially provisioned; preparing the user-approved Canadian private-SQL
-revision after an inherited network-policy block. No public application URL exists.**
+**Status: Canadian private networking, secretless SQL access, synthetic seeding
+and fresh Search/OCR proofs have succeeded. Applications exist privately;
+end-to-end acceptance is still in progress. No public application URL exists.**
 Both runtime images passed exact-digest scans, and real managed-identity caller
 validation passed its positive/four-negative proof. SQL/database, Search,
-Document Intelligence and the approved regional model deployment now exist,
-but SQL connectivity is blocked; no sources are seeded and neither application
-is deployed. These existing resources can incur charges while paused.
+Document Intelligence and the approved regional model deployment now exist.
+The approved VNet-integrated environment, SQL private endpoint and DNS now exist.
+Actual probes verified private-only SQL resolution, managed-identity login,
+runtime permission boundaries, source documents, governed Search and fresh OCR.
+The first private application acceptance stopped on its incorrect expectation
+of 404 rather than the API's correct 405 rejection of case creation; that test
+contract is corrected, not a bypass of the denial. Real model/streaming, remaining
+view/negative checks and browser/public acceptance are not yet claimed complete.
+Existing resources incur charges while held privately.
 The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
 implements the staged cloud entry point; **its full Azure execution is not yet verified**.
 No cloud URL, fabricated
@@ -78,7 +85,7 @@ seeds SQL/Search, verifies runtime SQL permissions/Search/fresh OCR, and tests
 private apps/model streams before public exposure. No hidden hand-seeding or
 source attachment is required. ARM success or `/health` alone is not acceptance.
 
-**Current deployment blocker:** inherited management-group assignment
+**Resolved topology blocker:** inherited management-group assignment
 `MCAPSGovDeployPolicies` applies `AzureSQL_PublicNetwork_Modify`, which changed
 SQL public network access to `Disabled`. The Azure-services firewall rule then
 failed with `DenyPublicEndpointEnabled`, despite successful Provider validation
@@ -88,7 +95,7 @@ SQL remains Entra-only. No policy exemption, exclusion tag or public-network
 reenablement is attempted. Do not discard saved state or retry the old public-SQL
 template. The user subsequently approved compliant private connectivity.
 
-The **user-approved, not yet deployed**, compliant revision adds a
+The **user-approved and provisioned**, compliant revision adds a
 Canadian VNet, delegated app subnet, separate SQL endpoint subnet, SQL private
 endpoint/private DNS and a new VNet-integrated Consumption environment.
 [The existing environment cannot change network type](https://learn.microsoft.com/en-us/azure/container-apps/networking#virtual-network-type);
@@ -96,7 +103,7 @@ it and the existing data services would be preserved, not deleted or duplicated.
 The approved additional network planning allowance is US$35-US$50/month; see costs below.
 SQL Network Security Perimeter support is documented
 [preview](https://learn.microsoft.com/en-us/azure/azure-sql/database/network-security-perimeter?view=azuresql),
-not a verified alternate connection. Neither network option is provisioned.
+not a verified alternate connection. No NSP is provisioned.
 
 **User-approved build-plane exception:** standard ACR managed builds are used
 with the planned Basic registry because this host has no Docker, Podman,
@@ -456,7 +463,8 @@ must resolve the SQL hostname only inside the endpoint subnet and connect using
 ODBC managed-identity authentication with certificate validation before seeding.
 Control-plane checks also require an Approved SQL endpoint and Entra-only SQL.
 Runtime-source proof independently repeats private DNS and constrained SQL
-permission checks. These are deployment gates, not already-passed live claims.
+permission checks. These private SQL/source gates have passed live; final
+application/model/public acceptance remains incomplete.
 Other data-service public endpoints retain disabled local/key auth and scoped
 managed-identity authorization; this is not an all-services-private topology.
 

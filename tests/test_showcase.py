@@ -96,6 +96,7 @@ def test_freeform_writes_search_uploads_and_send_paths_are_rejected(public_clien
     assert public_client.post("/api/cases/SYN-CASE-001/communication", headers=headers,
                               json={"text": "Untrusted submitted health text", "confirmed": True}).status_code == 403
     assert public_client.post("/api/upload", headers=headers, files={"file": ("sample.txt", b"untrusted")}).status_code == 415
+    assert public_client.post("/api/cases", headers=headers, json={}).status_code == 405
     for path in ("/api/send", "/api/cases", "/api/fetch"):
         assert public_client.post(path, headers=headers, json={"url": "https://example.invalid/"}).status_code in {404, 405}
     assert public_client.post("/ag-ui-live", headers={**headers, "Content-Type": "application/json"},
