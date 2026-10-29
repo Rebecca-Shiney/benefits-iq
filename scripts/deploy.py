@@ -27,6 +27,8 @@ IMAGE_TESTS = ("test_cloud_adapters.py", "test_cloud_seed.py", "test_entra_auth.
 ROOT_CONTEXT = ("package.json", "package-lock.json", "requirements.lock.txt", "next.config.mjs",
                 "next-env.d.ts", "tsconfig.json", ".dockerignore")
 INFRA_CONTEXT = ("Dockerfile.api", "Dockerfile.web", "schema.sql", "grant-runtime.sql")
+AGENT_CONTEXT = ("orchestrator.md", "intake.md", "evidence.md", "member-status.md",
+                 "renewal.md", "employer-insight.md", "showcase-options.json")
 
 
 class DeploymentError(RuntimeError):
@@ -203,7 +205,8 @@ def context_files():
         parts = path.parts
         allowed = (name in ROOT_CONTEXT or (len(parts) == 2 and parts[0] == "infra" and parts[1] in INFRA_CONTEXT)
                    or (len(parts) == 2 and parts[0] == "tests" and parts[1] in IMAGE_TESTS)
-                   or (parts[0] in {"service", "agents", "app", "components", "lib"}
+                   or (len(parts) == 2 and parts[0] == "agents" and parts[1] in AGENT_CONTEXT)
+                   or (parts[0] in {"service", "app", "components", "lib"}
                        and path.suffix.lower() in {".py", ".json", ".ts", ".tsx", ".css", ".mjs"}))
         if allowed:
             source = ROOT / path
@@ -213,6 +216,7 @@ def context_files():
     expected = {Path(path) for path in ROOT_CONTEXT}
     expected.update(Path("infra") / path for path in INFRA_CONTEXT)
     expected.update(Path("tests") / path for path in IMAGE_TESTS)
+    expected.update(Path("agents") / path for path in AGENT_CONTEXT)
     missing = expected - set(files)
     if missing:
         raise DeploymentError("COMMITTED_BUILD_CONTEXT_INCOMPLETE")

@@ -98,6 +98,26 @@ def test_build_reads_committed_bytes_not_mutable_worktree(monkeypatch):
         deploy.committed_content(Path("service") / "app.py")
 
 
+def test_build_context_requires_agent_definitions_without_including_arbitrary_documents(monkeypatch, tmp_path):
+    expected = [*deploy.ROOT_CONTEXT]
+    for folder, names in (("infra", deploy.INFRA_CONTEXT), ("tests", deploy.IMAGE_TESTS),
+                          ("agents", deploy.AGENT_CONTEXT)):
+        expected.extend(str(Path(folder) / name) for name in names)
+    excluded = [str(Path(folder) / name) for folder, name in (
+        ("agents", "private-notes.md"), ("service", "private-notes.md"),
+        ("app", "attachment.docx"), ("app", "attachment.pdf"))]
+    execute = Mock(side_effect=["\0".join([*expected, *excluded]), ""])
+    monkeypatch.setattr(deploy, "ROOT", tmp_path)
+    monkeypatch.setattr(deploy, "command", execute)
+    files = deploy.context_files()
+    assert Path("agents") / "orchestrator.md" in files
+    assert set(files) == {Path(name) for name in expected}
+    execute.side_effect = ["\0".join(name for name in expected
+                                   if Path(name).name != "orchestrator.md")]
+    with pytest.raises(deploy.DeploymentError, match="COMMITTED_BUILD_CONTEXT_INCOMPLETE"):
+        deploy.context_files()
+
+
 @pytest.mark.parametrize("purpose,receipt", [
     ("identity-proof", {"token_exposed": False, "data_services_exercised": False,
                         "negative_checks": ["api_client_id", "runtime_client_id",
