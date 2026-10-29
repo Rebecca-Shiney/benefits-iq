@@ -43,7 +43,8 @@ def command(args, timeout=180, env=None):
         code = re.search(r'"code"\s*:\s*"([A-Za-z0-9_]+)"|(?:ERROR: )?\(([A-Za-z0-9_]+)\)',
                          result.stderr)
         suffix = next((part for part in code.groups() if part), "") if code else "COMMAND_FAILED"
-        raise DeploymentError(suffix)
+        operation = re.sub(r"[^A-Za-z0-9_]", "_", args[1].upper()) if len(args) > 1 else "COMMAND"
+        raise DeploymentError(f"{Path(args[0]).stem.upper()}_{operation}_{suffix}")
     return result.stdout
 
 
@@ -160,13 +161,16 @@ def preflight(azure):
     if (account.get("id") != azure.subscription or account.get("state") != "Enabled"
             or account.get("environmentName") != "AzureCloud" or account.get("user", {}).get("type") != "user"):
         raise DeploymentError("INTERACTIVE_DEPLOYER_IN_APPROVED_AZURE_CONTEXT_REQUIRED")
-    owner = azure.run("ad", "signed-in-user", "show", "--query", "id")
+    owner = azure.graph("GET", "/me", query={"$select": "id"})["id"]
     canonical_guid(owner)
     WORK.mkdir(exist_ok=True)
     for template in TEMPLATES:
         command([azure.executable, "bicep", "build", "--file", str(ROOT / "infra" / f"{template}.bicep"),
                  "--outfile", str(WORK / f"{template}.compiled.json")])
-    azure.run("extension", "show", "--name", "containerapp")
+    extension = json_output(command([azure.executable, "extension", "show", "--name", "containerapp",
+                                     "--only-show-errors", "--output", "json"]))
+    if extension.get("name") != "containerapp":
+        raise DeploymentError("CONTAINERAPP_EXTENSION_REQUIRED")
     scanner = os.environ.get("BENEFITS_TRIVY") or shutil.which("trivy")
     if not scanner or not Path(scanner).is_file():
         raise DeploymentError("TRIVY_SCANNER_REQUIRED_SET_BENEFITS_TRIVY_TO_VERIFIED_EXECUTABLE")

@@ -27,6 +27,27 @@ def test_empty_patch_is_allowed_but_empty_read_is_not(monkeypatch, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
+def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch, tmp_path):
+    instance = Mock(subscription=SUBSCRIPTION, executable="az")
+    instance.run.return_value = {"id": SUBSCRIPTION, "state": "Enabled",
+                                 "environmentName": "AzureCloud", "user": {"type": "user"}}
+    instance.graph.return_value = {"id": SUBSCRIPTION}
+    scanner = tmp_path / "trivy.exe"
+    scanner.touch()
+    monkeypatch.setenv("BENEFITS_TRIVY", str(scanner))
+    for key in ("AZURE_CLIENT_SECRET", "OPENAI_API_KEY", "BENEFITS_SERVICE_SECRET"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(deploy, "WORK", tmp_path)
+    execute = Mock(return_value='{"name":"containerapp"}')
+    monkeypatch.setattr(deploy, "command", execute)
+    monkeypatch.setattr(deploy, "context_files", Mock())
+    account, owner, path = deploy.preflight(instance)
+    instance.graph.assert_called_once_with("GET", "/me", query={"$select": "id"})
+    assert owner == SUBSCRIPTION and path == str(scanner)
+    assert execute.call_args.args[0][:5] == ["az", "extension", "show", "--name", "containerapp"]
+    assert "--subscription" not in execute.call_args.args[0]
+
+
 def test_state_replace_is_atomic_and_leaves_no_temporary_file(monkeypatch, tmp_path):
     monkeypatch.setattr(deploy, "WORK", tmp_path)
     path = tmp_path / "state.json"
