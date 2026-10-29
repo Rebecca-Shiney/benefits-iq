@@ -27,7 +27,8 @@ def test_empty_patch_is_allowed_but_empty_read_is_not(monkeypatch, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch, tmp_path):
+@pytest.mark.parametrize("sql_public", ["Disabled", "Enabled"])
+def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch, tmp_path, sql_public):
     instance = Mock(subscription=SUBSCRIPTION, executable="az")
     instance.run.return_value = {"id": SUBSCRIPTION, "state": "Enabled",
                                  "environmentName": "AzureCloud", "user": {"type": "user"}}
@@ -38,14 +39,97 @@ def test_preflight_scopes_graph_me_but_not_global_extension_commands(monkeypatch
     for key in ("AZURE_CLIENT_SECRET", "OPENAI_API_KEY", "BENEFITS_SERVICE_SECRET"):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(deploy, "WORK", tmp_path)
+    (tmp_path / "data.compiled.json").write_text(json.dumps({"resources": [
+        {"type": "Microsoft.Sql/servers", "properties": {"publicNetworkAccess": sql_public}},
+    ]}), encoding="utf-8")
     execute = Mock(return_value='{"name":"containerapp"}')
     monkeypatch.setattr(deploy, "command", execute)
     monkeypatch.setattr(deploy, "context_files", Mock())
+    policy_check = Mock()
+    monkeypatch.setattr(deploy, "policy_preflight", policy_check)
+    if sql_public != "Disabled":
+        with pytest.raises(deploy.DeploymentError, match="UNCONDITIONAL_PRIVATE_SQL_TEMPLATE_REQUIRED"):
+            deploy.preflight(instance)
+        policy_check.assert_not_called()
+        instance.graph.assert_not_called()
+        return
     account, owner, path = deploy.preflight(instance)
+    policy_check.assert_called_once_with(instance, private_sql=True)
     instance.graph.assert_called_once_with("GET", "/me", query={"$select": "id"})
     assert owner == SUBSCRIPTION and path == str(scanner)
     assert execute.call_args.args[0][:5] == ["az", "extension", "show", "--name", "containerapp"]
     assert "--subscription" not in execute.call_args.args[0]
+
+
+def test_policy_preflight_reads_ancestors_and_stops_on_nested_sql_control():
+    instance = Mock(subscription=SUBSCRIPTION)
+    scope = "/providers/Microsoft.Management/managementGroups/synthetic-governance"
+    parent = scope + "/providers/Microsoft.Authorization/policySetDefinitions/parent"
+    child = scope + "/providers/Microsoft.Authorization/policySetDefinitions/child"
+    sql = scope + "/providers/Microsoft.Authorization/policyDefinitions/AzureSQL_PublicNetwork_Modify"
+    instance.run.side_effect = [
+        {"value": [{"properties": {"scope": scope, "policyDefinitionId": parent}}]},
+        {"properties": {"policyDefinitions": [{"policyDefinitionId": child}]}},
+        {"properties": {"policyDefinitions": [{"policyDefinitionId": sql}]}},
+    ]
+    with pytest.raises(deploy.DeploymentError, match="INHERITED_SQL_NETWORK_POLICY_REVIEW_REQUIRED"):
+        deploy.policy_preflight(instance)
+    first = instance.run.call_args_list[0].args
+    assert first[4] == (
+        f"https://management.azure.com/subscriptions/{SUBSCRIPTION}"
+        "/providers/Microsoft.Authorization/policyAssignments")
+    assert "--url-parameters" in first and "api-version=2023-04-01" in first
+    assert "--scope" not in first
+
+
+def test_policy_preflight_handles_unenforced_assignments_and_initiative_cycles():
+    instance = Mock(subscription=SUBSCRIPTION)
+    root = "/providers/Microsoft.Authorization/"
+    initiative = root + "policySetDefinitions/synthetic-cycle"
+    instance.run.side_effect = [
+        {"value": [
+            {"properties": {"enforcementMode": "DoNotEnforce",
+                            "policyDefinitionId": root + "policyDefinitions/AzureSQL_PublicNetwork_Modify"}},
+            {"properties": {"policyDefinitionId": initiative}},
+        ]},
+        {"properties": {"policyDefinitions": [{"policyDefinitionId": initiative}]}},
+    ]
+    deploy.policy_preflight(instance)
+    assert instance.run.call_count == 2
+
+
+@pytest.mark.parametrize("response", [
+    {}, {"value": None}, {"value": [None]}, {"value": [{}]},
+    {"value": [], "nextLink": "https://management.azure.com/more"},
+])
+def test_policy_preflight_does_not_treat_partial_inventory_as_absence(response):
+    instance = Mock(subscription=SUBSCRIPTION)
+    instance.run.return_value = response
+    with pytest.raises(deploy.DeploymentError, match="EFFECTIVE_POLICY_"):
+        deploy.policy_preflight(instance)
+
+
+def test_policy_preflight_surfaces_denied_reads_and_malformed_initiatives():
+    instance = Mock(subscription=SUBSCRIPTION)
+    instance.run.side_effect = deploy.DeploymentError("AZ_REST_AuthorizationFailed")
+    with pytest.raises(deploy.DeploymentError, match="AZ_REST_AuthorizationFailed"):
+        deploy.policy_preflight(instance)
+    instance.run.side_effect = [
+        {"value": [{"properties": {"policyDefinitionId":
+                                   "/providers/Microsoft.Authorization/policySetDefinitions/synthetic"}}]},
+        {},
+    ]
+    with pytest.raises(deploy.DeploymentError, match="EFFECTIVE_POLICY_INITIATIVE_RESPONSE_INVALID"):
+        deploy.policy_preflight(instance)
+
+
+def test_known_modifier_is_compatible_only_with_explicit_private_sql_topology():
+    instance = Mock(subscription=SUBSCRIPTION)
+    instance.run.return_value = {"value": [{"properties": {"policyDefinitionId":
+        "/providers/Microsoft.Authorization/policyDefinitions/AzureSQL_PublicNetwork_Modify"}}]}
+    deploy.policy_preflight(instance, private_sql=True)
+    with pytest.raises(deploy.DeploymentError, match="INHERITED_SQL_NETWORK_POLICY_REVIEW_REQUIRED"):
+        deploy.policy_preflight(instance)
 
 
 def test_state_replace_is_atomic_and_leaves_no_temporary_file(monkeypatch, tmp_path):
@@ -55,6 +139,28 @@ def test_state_replace_is_atomic_and_leaves_no_temporary_file(monkeypatch, tmp_p
     deploy.save_state(path, {"phase": 2})
     assert json.loads(path.read_text()) == {"phase": 2}
     assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.parametrize("attached", [True, False])
+def test_only_owned_sql_endpoints_azure_generated_nic_can_be_untagged(attached):
+    instance = Mock(subscription=SUBSCRIPTION)
+    state = {"environment": "synthetic", "environmentId": SUBSCRIPTION}
+    base, group = deploy.names(state)
+    endpoint_id = (f"/subscriptions/{SUBSCRIPTION}/resourceGroups/{group}"
+                   f"/providers/Microsoft.Network/privateEndpoints/pe-sql-{base}")
+    nic_id = (f"/subscriptions/{SUBSCRIPTION}/resourceGroups/{group}"
+              "/providers/Microsoft.Network/networkInterfaces/generated")
+    instance.run.side_effect = [
+        True, {"location": "canadaeast", "tags": deploy.tags(state)},
+        [{"id": endpoint_id, "type": "Microsoft.Network/privateEndpoints", "tags": deploy.tags(state)},
+         {"id": nic_id, "type": "Microsoft.Network/networkInterfaces"}],
+        {"networkInterfaces": [{"id": nic_id if attached else nic_id + "-foreign"}]},
+    ]
+    if attached:
+        deploy.verify_ownership(instance, state)
+    else:
+        with pytest.raises(deploy.DeploymentError, match="UNOWNED_RESOURCE_IN_DEDICATED_GROUP"):
+            deploy.verify_ownership(instance, state)
 
 
 @pytest.mark.parametrize("name", ["../outside", "Aaa", "ab", "a--b", "a" * 12, "ends-"])
@@ -204,19 +310,32 @@ def test_provider_validation_precedes_every_resource_write(monkeypatch):
     monkeypatch.setattr(deploy, "verify_ownership", Mock())
     monkeypatch.setattr(deploy, "WORK", deploy.ROOT / ".azure")
     instance = Mock()
-    instance.run.side_effect = [{}, {"properties": {
+    instance.run.side_effect = [{}, {"status": "Succeeded", "changes": []}, {"properties": {
         "provisioningState": "Succeeded", "outputs": {"verified": {"value": True}},
     }}]
     state = {"environment": "synthetic", "environmentId": SUBSCRIPTION}
     assert deploy.deploy_template(instance, state, "job", {}) == {"verified": True}
     calls = instance.run.call_args_list
     assert calls[0].args[:3] == ("deployment", "group", "validate")
-    assert calls[1].args[:3] == ("deployment", "group", "create")
+    assert calls[1].args[:3] == ("deployment", "group", "what-if")
+    assert calls[2].args[:3] == ("deployment", "group", "create")
     instance.run.reset_mock(side_effect=True)
     instance.run.side_effect = deploy.DeploymentError("RequestDisallowedByPolicy")
     with pytest.raises(deploy.DeploymentError, match="RequestDisallowedByPolicy"):
         deploy.deploy_template(instance, state, "job", {})
     assert instance.run.call_count == 1
+
+
+def test_resource_deletions_in_preview_stop_before_create(monkeypatch):
+    monkeypatch.setattr(deploy, "verify_ownership", Mock())
+    instance = Mock()
+    instance.run.side_effect = [
+        {}, {"status": "Succeeded", "changes": [{"changeType": "Delete"}]},
+    ]
+    state = {"environment": "synthetic", "environmentId": SUBSCRIPTION}
+    with pytest.raises(deploy.DeploymentError, match="RESOURCE_DELETION_NOT_APPROVED"):
+        deploy.deploy_template(instance, state, "network", {})
+    assert instance.run.call_count == 2
 
 
 def test_foundation_phase_stops_before_data_or_public_apps(monkeypatch, capsys):
@@ -239,6 +358,59 @@ def test_foundation_phase_stops_before_data_or_public_apps(monkeypatch, capsys):
     assert [call.args[2] for call in build.call_args_list] == ["api", "web"]
     host.assert_not_called()
     assert json.loads(capsys.readouterr().out)["cloud_application_deployed"] is False
+
+
+def test_full_deploy_requires_private_sql_receipt_before_seeding_or_app_hosting(monkeypatch, tmp_path):
+    instance = Mock()
+    sql_id = "/subscriptions/" + SUBSCRIPTION + "/resourceGroups/synthetic/providers/Microsoft.Sql/servers/synthetic"
+    instance.run.side_effect = [
+        False, {"id": sql_id, "publicNetworkAccess": "Disabled"},
+        {"properties": {"azureADOnlyAuthentication": True}},
+        {"privateLinkServiceConnections": [{"privateLinkServiceId": sql_id, "groupIds": ["sqlServer"],
+                                           "privateLinkServiceConnectionState": {"status": "Approved"}}]},
+    ]
+    identity = {"name": "synthetic", "clientId": "client", "principalId": "principal",
+                "resourceId": "identity"}
+    foundation = {"webIdentity": identity, "apiIdentity": identity, "setupIdentity": identity,
+                  "logsResourceId": "logs"}
+    network = {"environmentName": "vnet-environment", "environmentResourceId": "private-environment",
+               "sqlEndpointResourceId": "private-endpoint", "sqlPrivateCidr": "10.84.0.32/27"}
+    monkeypatch.setattr(deploy, "verify_ownership", Mock())
+    monkeypatch.setattr(deploy, "ensure_resource_api", Mock(return_value={"clientId": "audience"}))
+    template = Mock(side_effect=[
+        {"foundation": foundation}, {"environmentVariables": {"BENEFITS_SQL_SERVER": "synthetic.database.windows.net"}},
+        {"network": network},
+    ])
+    monkeypatch.setattr(deploy, "deploy_template", template)
+    monkeypatch.setattr(deploy, "build_image", Mock(return_value="digest"))
+    monkeypatch.setattr(deploy, "save_state", Mock())
+    proof = Mock(side_effect=[{"verified": True}, deploy.DeploymentError("PRIVATE_SQL_PROOF_STOPPED")])
+    monkeypatch.setattr(deploy, "job", proof)
+    hosting = Mock()
+    monkeypatch.setattr(deploy, "host", hosting)
+    state = {"environment": "synthetic", "environmentId": SUBSCRIPTION, "tenant": SUBSCRIPTION}
+    with pytest.raises(deploy.DeploymentError, match="PRIVATE_SQL_PROOF_STOPPED"):
+        deploy.deploy(instance, tmp_path / "state.json", state, "owner", "scanner")
+    assert [call.args[2] for call in template.call_args_list] == ["foundation", "data", "network"]
+    assert [call.args[2] for call in proof.call_args_list] == ["identity-proof", "private-sql"]
+    assert proof.call_args.args[4]["BENEFITS_SQL_PRIVATE_CIDR"] == network["sqlPrivateCidr"]
+    hosting.assert_not_called()
+
+
+def test_private_jobs_use_new_environment_without_mutating_original_proof_job(monkeypatch):
+    template = Mock(side_effect=deploy.DeploymentError("BEFORE_JOB_WRITE"))
+    monkeypatch.setattr(deploy, "deploy_template", template)
+    state = {"environment": "synthetic", "environmentId": SUBSCRIPTION, "apiImage": "digest",
+             "foundation": {"environmentResourceId": "original", "registryEndpoint": "registry"},
+             "network": {"environmentResourceId": "private"}}
+    with pytest.raises(deploy.DeploymentError, match="BEFORE_JOB_WRITE"):
+        deploy.job(Mock(), state, "private-sql", {"resourceId": "identity"}, {}, "private_sql_verified")
+    parameters = template.call_args.args[3]
+    assert parameters["environmentResourceId"] == "private" and parameters["name"].startswith("n-q-")
+    with pytest.raises(deploy.DeploymentError, match="BEFORE_JOB_WRITE"):
+        deploy.job(Mock(), state, "identity-proof", {"resourceId": "identity"}, {}, "managed_identity_caller_verified")
+    parameters = template.call_args.args[3]
+    assert parameters["environmentResourceId"] == "original" and parameters["name"].startswith("p-")
 
 
 def test_job_receipt_is_bound_to_actual_execution_image(monkeypatch):

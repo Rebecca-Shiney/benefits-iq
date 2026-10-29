@@ -15,12 +15,13 @@ param registryEndpoint string
 @maxLength(71)
 param imageDigest string
 
-@allowed(['identity-proof', 'synthetic-setup', 'runtime-sources', 'cloud-acceptance'])
+@allowed(['identity-proof', 'private-sql', 'synthetic-setup', 'runtime-sources', 'cloud-acceptance'])
 param purpose string
 param environmentVariables object
 
 var commands = {
   'identity-proof': 'service.identity_probe'
+  'private-sql': 'service.sql_network_probe'
   'synthetic-setup': 'service.cloud_seed'
   'runtime-sources': 'service.cloud_source_probe'
   'cloud-acceptance': 'service.cloud_acceptance'

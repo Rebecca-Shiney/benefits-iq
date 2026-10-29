@@ -20,10 +20,10 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / ".azure"
-TEMPLATES = ("foundation", "job", "data", "hosting")
+TEMPLATES = ("foundation", "job", "data", "network", "hosting")
 IMAGE_TESTS = ("test_cloud_adapters.py", "test_cloud_seed.py", "test_entra_auth.py",
                "test_identity_probe.py", "test_showcase.py", "test_cloud_acceptance.py",
-               "test_cloud_source_probe.py")
+               "test_cloud_source_probe.py", "test_sql_network_probe.py")
 ROOT_CONTEXT = ("package.json", "package-lock.json", "requirements.lock.txt", "next.config.mjs",
                 "next-env.d.ts", "tsconfig.json", ".dockerignore")
 INFRA_CONTEXT = ("Dockerfile.api", "Dockerfile.web", "schema.sql", "grant-runtime.sql")
@@ -148,10 +148,75 @@ def verify_ownership(azure, state):
         if existing.get("location") != "canadaeast" or any(
                 existing.get("tags", {}).get(key) != value for key, value in tags(state).items()):
             raise DeploymentError("RESOURCE_GROUP_OWNERSHIP_COLLISION")
-        for resource in azure.run("resource", "list", "--resource-group", group):
+        resources = azure.run("resource", "list", "--resource-group", group)
+        for resource in resources:
             if "/" not in resource["type"].split("/", 1)[-1] and any(
                     (resource.get("tags") or {}).get(key) != value for key, value in tags(state).items()):
+                if resource["type"].lower() == "microsoft.network/networkinterfaces":
+                    endpoint_id = (f"/subscriptions/{azure.subscription}/resourceGroups/{group}"
+                                   f"/providers/Microsoft.Network/privateEndpoints/pe-sql-{names(state)[0]}")
+                    endpoint = next((item for item in resources
+                                     if item["id"].lower() == endpoint_id.lower()
+                                     and all((item.get("tags") or {}).get(key) == value
+                                             for key, value in tags(state).items())), None)
+                    if endpoint is not None:
+                        actual = azure.run("network", "private-endpoint", "show", "--ids", endpoint_id)
+                        if any(nic.get("id", "").lower() == resource["id"].lower()
+                               for nic in actual.get("networkInterfaces", [])):
+                            continue
                 raise DeploymentError("UNOWNED_RESOURCE_IN_DEDICATED_GROUP")
+
+
+def policy_preflight(azure, *, private_sql=False):
+    """Inventory ancestors; reject legacy public SQL under the known modifier.
+
+    This is a conservative topology gate, not an evaluator of policy conditions,
+    parameter overrides, exemptions or compliance.
+    """
+    response = azure.run(
+        "rest", "--method", "get", "--url",
+        f"https://management.azure.com/subscriptions/{azure.subscription}"
+        "/providers/Microsoft.Authorization/policyAssignments",
+        "--url-parameters", "api-version=2023-04-01")
+    if not isinstance(response, dict) or not isinstance(response.get("value"), list):
+        raise DeploymentError("EFFECTIVE_POLICY_ASSIGNMENT_RESPONSE_INVALID")
+    if response.get("nextLink"):
+        raise DeploymentError("EFFECTIVE_POLICY_PAGINATION_REQUIRES_REVIEW")
+    pending = []
+    for assignment in response["value"]:
+        properties = assignment.get("properties") if isinstance(assignment, dict) else None
+        if not isinstance(properties, dict) or not properties.get("policyDefinitionId"):
+            raise DeploymentError("EFFECTIVE_POLICY_ASSIGNMENT_RESPONSE_INVALID")
+        if properties.get("enforcementMode", "Default") != "DoNotEnforce":
+            pending.append(properties["policyDefinitionId"])
+    visited = set()
+    while pending:
+        reference = pending.pop()
+        if not isinstance(reference, str) or not re.fullmatch(
+                r"/(?:[A-Za-z0-9_.-]+/)*(?:policySetDefinitions|policyDefinitions)/[A-Za-z0-9_.-]+",
+                reference, re.IGNORECASE):
+            raise DeploymentError("EFFECTIVE_POLICY_DEFINITION_REFERENCE_INVALID")
+        normalized = reference.lower()
+        if normalized.endswith("/policydefinitions/azuresql_publicnetwork_modify"):
+            if not private_sql:
+                raise DeploymentError("INHERITED_SQL_NETWORK_POLICY_REVIEW_REQUIRED")
+            continue
+        if "/policysetdefinitions/" not in normalized or normalized in visited:
+            continue
+        visited.add(normalized)
+        if len(visited) > 32:
+            raise DeploymentError("EFFECTIVE_POLICY_INITIATIVE_LIMIT_REQUIRES_REVIEW")
+        initiative = azure.run(
+            "rest", "--method", "get", "--url", "https://management.azure.com" + reference,
+            "--url-parameters", "api-version=2023-04-01")
+        properties = initiative.get("properties") if isinstance(initiative, dict) else None
+        definitions = properties.get("policyDefinitions") if isinstance(properties, dict) else None
+        if not isinstance(definitions, list):
+            raise DeploymentError("EFFECTIVE_POLICY_INITIATIVE_RESPONSE_INVALID")
+        for definition in definitions:
+            if not isinstance(definition, dict) or not definition.get("policyDefinitionId"):
+                raise DeploymentError("EFFECTIVE_POLICY_INITIATIVE_RESPONSE_INVALID")
+            pending.append(definition["policyDefinitionId"])
 
 
 def preflight(azure):
@@ -163,12 +228,21 @@ def preflight(azure):
     if (account.get("id") != azure.subscription or account.get("state") != "Enabled"
             or account.get("environmentName") != "AzureCloud" or account.get("user", {}).get("type") != "user"):
         raise DeploymentError("INTERACTIVE_DEPLOYER_IN_APPROVED_AZURE_CONTEXT_REQUIRED")
-    owner = azure.graph("GET", "/me", query={"$select": "id"})["id"]
-    canonical_guid(owner)
     WORK.mkdir(exist_ok=True)
     for template in TEMPLATES:
         command([azure.executable, "bicep", "build", "--file", str(ROOT / "infra" / f"{template}.bicep"),
                  "--outfile", str(WORK / f"{template}.compiled.json")])
+    compiled = json_output((WORK / "data.compiled.json").read_text(encoding="utf-8"))
+    sql = [resource for resource in compiled.get("resources", [])
+           if resource.get("type", "").lower() == "microsoft.sql/servers"]
+    if (len(sql) != 1 or sql[0].get("condition") is not None
+            or sql[0].get("properties", {}).get("publicNetworkAccess") != "Disabled"
+            or any(resource.get("type", "").lower() == "microsoft.sql/servers/firewallrules"
+                   for resource in compiled.get("resources", []))):
+        raise DeploymentError("UNCONDITIONAL_PRIVATE_SQL_TEMPLATE_REQUIRED")
+    policy_preflight(azure, private_sql=True)
+    owner = azure.graph("GET", "/me", query={"$select": "id"})["id"]
+    canonical_guid(owner)
     extension = json_output(command([azure.executable, "extension", "show", "--name", "containerapp",
                                      "--only-show-errors", "--output", "json"]))
     if extension.get("name") != "containerapp":
@@ -191,6 +265,15 @@ def deploy_template(azure, state, template, parameters):
         validation = [*options]
         validation[2] = "validate"
         azure.run(*validation, "--parameters", "@" + filename, "--validation-level", "Provider", timeout=2400)
+        preview = [*options]
+        preview[2] = "what-if"
+        changes = azure.run(*preview, "--parameters", "@" + filename, "--validation-level", "Provider",
+                            "--no-pretty-print", "--result-format", "ResourceIdOnly", timeout=2400)
+        if (changes.get("status") != "Succeeded" or changes.get("error")
+                or not isinstance(changes.get("changes"), list)):
+            raise DeploymentError("SUCCESSFUL_COMPLETE_WHAT_IF_REQUIRED")
+        if any(change.get("changeType") == "Delete" for change in changes["changes"]):
+            raise DeploymentError("RESOURCE_DELETION_NOT_APPROVED")
         result = azure.run(*options, "--parameters", "@" + filename, timeout=2400)
     if result.get("properties", {}).get("provisioningState") != "Succeeded":
         raise DeploymentError("ARM_DEPLOYMENT_NOT_SUCCESSFUL")
@@ -314,10 +397,14 @@ def build_image(azure, state, component, scanner):
 
 def job(azure, state, purpose, identity, variables, receipt):
     foundation = state["foundation"]
-    prefix = {"identity-proof": "p", "synthetic-setup": "s", "runtime-sources": "r", "cloud-acceptance": "v"}[purpose]
+    prefix = {"identity-proof": "p", "private-sql": "q", "synthetic-setup": "s",
+              "runtime-sources": "r", "cloud-acceptance": "v"}[purpose]
+    environment = foundation if purpose == "identity-proof" else state["network"]
+    if purpose != "identity-proof":
+        prefix = "n-" + prefix
     name = f"{prefix}-{names(state)[0]}"
     deploy_template(azure, state, "job", {
-        "name": name, "tags": tags(state), "environmentResourceId": foundation["environmentResourceId"],
+        "name": name, "tags": tags(state), "environmentResourceId": environment["environmentResourceId"],
         "identityResourceId": identity["resourceId"], "registryEndpoint": foundation["registryEndpoint"],
         "imageDigest": state["apiImage"], "purpose": purpose, "environmentVariables": variables,
     })
@@ -365,6 +452,11 @@ def job_receipt(logs, purpose, receipt):
 
 
 def valid_receipt(purpose, receipt):
+    if purpose == "private-sql":
+        return (receipt.get("schema_mutated") is False
+                and type(receipt.get("resolved_address_count")) is int
+                and receipt["resolved_address_count"] > 0
+                and set(receipt.get("checks", [])) == {"private_dns", "managed_identity_sql"})
     if purpose == "identity-proof":
         return (receipt.get("token_exposed") is False
                 and receipt.get("data_services_exercised") is False
@@ -387,7 +479,7 @@ def host(azure, state, component, variables, public=False):
     identity = state["foundation"][component + "Identity"]
     return deploy_template(azure, state, "hosting", {
         "name": component + "-" + names(state)[0], "tags": tags(state),
-        "environmentName": state["foundation"]["environmentName"],
+        "environmentName": state["network"]["environmentName"],
         "registryName": state["foundation"]["registryName"], "identityName": identity["name"],
         "identityResourceId": identity["resourceId"], "identityPrincipalId": identity["principalId"],
         "component": component, "imageDigest": state[component + "Image"],
@@ -434,6 +526,32 @@ def deploy(azure, path, state, owner, scanner, foundation_only=False):
         "apiPrincipalId": foundation["apiIdentity"]["principalId"],
     })["environmentVariables"]
     state["data"] = data
+    save_state(path, state)
+    state["network"] = deploy_template(azure, state, "network", {
+        "name": base, "tags": tags(state), "logsResourceId": foundation["logsResourceId"],
+    })["network"]
+    save_state(path, state)
+    sql = azure.run("sql", "server", "show", "--resource-group", names(state)[1], "--name", "sql-" + base)
+    if sql.get("publicNetworkAccess") != "Disabled":
+        raise DeploymentError("LIVE_SQL_PUBLIC_NETWORK_MUST_REMAIN_DISABLED")
+    aad = azure.run(
+        "rest", "--method", "get", "--url",
+        "https://management.azure.com" + sql["id"] + "/azureADOnlyAuthentications/Default",
+        "--url-parameters", "api-version=2025-01-01")
+    if aad.get("properties", {}).get("azureADOnlyAuthentication") is not True:
+        raise DeploymentError("LIVE_SQL_ENTRA_ONLY_AUTHENTICATION_REQUIRED")
+    endpoint = azure.run("network", "private-endpoint", "show", "--ids",
+                         state["network"]["sqlEndpointResourceId"])
+    links = endpoint.get("privateLinkServiceConnections", [])
+    if (len(links) != 1 or links[0].get("privateLinkServiceId", "").lower() != sql["id"].lower()
+            or links[0].get("groupIds") != ["sqlServer"]
+            or links[0].get("privateLinkServiceConnectionState", {}).get("status") != "Approved"):
+        raise DeploymentError("APPROVED_PRIVATE_SQL_ENDPOINT_REQUIRED")
+    data = {**data, "BENEFITS_SQL_PRIVATE_CIDR": state["network"]["sqlPrivateCidr"]}
+    state["data"] = data
+    state["privateSql"] = job(azure, state, "private-sql", foundation["setupIdentity"], {
+        **data, "BENEFITS_MANAGED_IDENTITY_CLIENT_ID": foundation["setupIdentity"]["clientId"],
+    }, "private_sql_verified")
     save_state(path, state)
     state["syntheticSetup"] = job(azure, state, "synthetic-setup", foundation["setupIdentity"], {
         **data, "BENEFITS_SETUP_MODE": "1",

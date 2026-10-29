@@ -12,6 +12,8 @@ from .cloud_entrypoint import logging_configuration
 from .cloud_errors import CloudServiceError, SqlStoreError
 from .cloud_seed import seed_bundle
 from .store import connection
+from .sql_network_probe import verify_private_dns
+from .sql_store import SqlConfiguration
 
 
 def main():
@@ -22,6 +24,7 @@ def main():
         raise RuntimeError("SOURCE_PROOF_DISALLOWS_STATIC_CREDENTIALS")
     cloud.validate_configuration()
     logging.config.dictConfig(logging_configuration())
+    verify_private_dns(SqlConfiguration.from_environment())
     with connection() as db:
         permissions = db.execute(
             "SELECT HAS_PERMS_BY_NAME('dbo.source_records','OBJECT','INSERT') AS source_write,"

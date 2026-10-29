@@ -15,6 +15,8 @@ def dependencies(monkeypatch):
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setattr(probe.cloud, "validate_configuration", Mock())
     monkeypatch.setattr(probe.logging.config, "dictConfig", Mock())
+    monkeypatch.setattr(probe.SqlConfiguration, "from_environment", Mock())
+    monkeypatch.setattr(probe, "verify_private_dns", Mock(return_value=1))
     permissions = {"source_write": 0, "decision_rewrite": 0, "ddl": 0, "decision_insert": 1}
     db = Mock()
     db.execute.side_effect = lambda statement, *args: Mock(fetchone=lambda: (

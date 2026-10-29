@@ -14,7 +14,7 @@ RUN python -m pip install --no-cache-dir --requirement requirements.lock.txt && 
 COPY --chown=benefits:benefits service ./service
 COPY --chown=benefits:benefits agents ./agents
 COPY --chown=benefits:benefits infra/schema.sql infra/grant-runtime.sql ./infra/
-COPY tests/test_cloud_adapters.py tests/test_cloud_seed.py tests/test_entra_auth.py tests/test_identity_probe.py tests/test_showcase.py tests/test_cloud_acceptance.py tests/test_cloud_source_probe.py ./tests/
+COPY tests/test_cloud_adapters.py tests/test_cloud_seed.py tests/test_entra_auth.py tests/test_identity_probe.py tests/test_showcase.py tests/test_cloud_acceptance.py tests/test_cloud_source_probe.py tests/test_sql_network_probe.py ./tests/
 RUN BENEFITS_PROFILE=local python -m pytest --quiet tests \
     && python -c "import pyodbc; assert 'ODBC Driver 18 for SQL Server' in pyodbc.drivers()" \
     && python -m pip uninstall -y pip

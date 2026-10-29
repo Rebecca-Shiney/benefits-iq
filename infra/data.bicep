@@ -16,7 +16,7 @@ resource sql 'Microsoft.Sql/servers@2025-01-01' = {
   properties: {
     version: '12.0'
     minimalTlsVersion: '1.2'
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
     administrators: {
       administratorType: 'ActiveDirectory'
       principalType: 'Application'
@@ -49,12 +49,6 @@ resource retention 'Microsoft.Sql/servers/databases/backupShortTermRetentionPoli
   parent: database
   name: 'default'
   properties: { retentionDays: 7 }
-}
-
-resource azureFirewall 'Microsoft.Sql/servers/firewallRules@2025-01-01' = {
-  parent: sql
-  name: 'AzureServicesWithEntraAuthentication'
-  properties: { startIpAddress: '0.0.0.0', endIpAddress: '0.0.0.0' }
 }
 
 module search 'br/public:avm/res/search/search-service:0.13.0' = {

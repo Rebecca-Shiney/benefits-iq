@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated: Canadian data/private-application phase. Foundation, both image scans and the real managed-identity positive/four-negative proof are complete. Data and both private-hosting templates passed actual-ID provider validation/what-if. No application/data services or public URL are deployed yet. Enterprise governance remains gated.**
+**Validated: approved private-SQL data/network IaC phase. Actual-ID Provider validation and what-if pass for both revised templates, with no deletion; inherited policy remains enforced. Partial Canadian data provisioning exists; no network, seed, application hosting or public URL is deployed yet. The user approved the bounded Canadian VNet/private endpoint/private DNS/new VNet-integrated Consumption environment and US$35-US$50/month incremental allowance. Fresh exact-image scans and live private SQL/source/model/application acceptance remain enforced deployment gates. Enterprise governance remains gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -45,8 +45,9 @@ supersedes the Fabric/Purview prerequisite pause for Starter only. Existing
 paid approval covers the previously approved core Azure services. Do not resume
 `dbtdemo`, create capacity or change any Fabric workspace for Starter.
 Complete remaining prerequisite/quota checks and dependency/authentication
-remediation before public exposure. Foundation-only provisioning has occurred;
-application/data services and public exposure remain gated.
+remediation before public exposure. Foundation and partial data provisioning
+have occurred; remaining deployment/public exposure are paused for the SQL
+networking blocker recorded in Section 7.
 
 Approval excludes shared-capacity changes of any kind for Starter, changes to other workspaces,
 tenant-wide admin consent/settings, permission bypasses and extra paid scope.
@@ -802,7 +803,7 @@ validation. This does not claim that unavailable local Docker already built them
   - [x] Template validation: `az deployment sub validate --location canadaeast --template-file infra\foundation.bicep --parameters environmentName=benefits-iq environmentId=bb2168f9-5c9d-4961-9960-f4932b863161 --validation-level Provider --subscription 85489118-9695-41ac-ba0f-e14ba8837c91`; Succeeded, error null.
   - [x] What-if: same subscription/template/parameters with `az deployment sub what-if --validation-level Provider --no-pretty-print --result-format ResourceIdOnly`; Succeeded, error null, eight creates, no deletes. Three ACR role-assignment IDs are Unsupported because new identity principal IDs do not yet exist; static roles/scopes were checked and actual assignments/pulls must be proved after foundation creation. This is a preview limitation, not claimed runtime authorization proof.
   - [x] Project build: `npm run build`, `npm run typecheck`; 21 Node protocol/request tests pass. Latest Python run: 249 pass, 11 optional HTTP skips; those 11 previously passed separately against the preserved preview. Latest targeted bootstrap/identity/source/acceptance suite: 70 pass. Browser 14 pass, one optional screenshot capture skipped. Full npm and isolated locked Python audits report no known vulnerabilities.
-  - [x] Azure Policy: actual CLI assignment read (Azure MCP is unavailable) shows the same three database-protection initiatives, no discovered denial. Provider-level foundation validation succeeds; policy-driven SQL Defender remains in the allowance and cannot be disabled.
+  - [ ] Effective Azure Policy compatibility: the earlier subscription/RG-only CLI reads showed three protection initiatives but missed inherited management-group assignments. They did not establish policy clearance. Ancestor-inclusive ARM discovery and the actual SQL failure below supersede that incomplete evidence; policy-driven SQL Defender remains in the allowance and cannot be disabled.
   - [x] Renewed private job validation at `2026-10-29T14:34:03Z`: `az deployment group validate` and `what-if --validation-level Provider --result-format ResourceIdOnly --no-pretty-print` for `infra\job.bicep`, actual stored foundation/identity IDs and accepted API digest. Both Succeeded, errors null; one job Create, seven existing-resource Ignore entries, no deletion. Corrected AVM's CPU input to string `'0.5'`, not a JSON float. Local evidence: `.azure\identity-job-validation.json` (ignored). Subscription policy read still returns the three protection initiatives; an empty RG listing was not treated as absence of inherited policy.
   - [x] Real API build `cw5`, digest `sha256:e29d294ce5194d6604e72efa5b7a78c104a2f7a17bf7fdc149197a58fdf6306d`: build tests/ODBC and final non-root SDK imports/no-packaging-tools assertions pass. Exact-digest Trivy acceptance passes with OS and language results, no blocking language vulnerabilities/secrets or High/Critical OS findings. No suppression/waiver.
 - [x] Data/app phase provider validation/what-if using actual foundation IDs, accepted image digests and private ingress: all three validations and previews Succeeded with errors null at `2026-10-29T14:50:35Z`-`14:50:44Z`. `data.bicep`: 13 Create changes, no Delete. Each `hosting.bicep` preview: one app Create, no Delete; predicted registry role-assignment IDs match the already-propagated API/web AcrPull assignments. Local generated evidence: `.azure\data-validation.json`, `.azure\api-hosting-validation.json`, `.azure\web-hosting-validation.json` (ignored). Preview configurations validate resource structure, not application startup or data connections.
@@ -876,12 +877,127 @@ The frontend image also built and passed exact-digest vulnerability/secret
 acceptance: `sha256:468fe702db7317007fdb98240d50bae59ee9b74c3585546d46aa3b772f797620`.
 Both container builds and the private MI proof are complete, not merely
 candidate-base scans. The latest targeted bootstrap/proof suite has 75 passing
-tests. Data/private-application provider validation and live connections are next.
+tests. Data/private-application provider validation subsequently passed, but the
+actual data deployment was blocked as recorded below.
 
-Final images, private MI/source/model proofs, data services and public/browser
-cloud acceptance remain outstanding. The existing foundation can incur registry/
-telemetry charges while held; it is not automatically deleted. No billable SQL,
-Search, Document Intelligence or OpenAI account has been created.
+### Partial data execution and inherited-network policy blocker
+
+The full staged entry command rebuilt/scanned both runtime images and repeated
+the real MI proof, then attempted `benefits-iq-data-bb2168f9`. The deployment is
+terminal **Failed**: its SQL Azure-services firewall rule returned
+`DenyPublicEndpointEnabled`. There is no active deployment command.
+
+Actually created in `rg-biq-benefits-iq-bb2168f95c9d`:
+
+| Resource | Placement / actual result |
+|---|---|
+| `sql-biq-benefits-iq-bb2168f95c9d`, database `benefits` | Canada East, Ready; Entra-only true; correct setup MI administrator; public network Disabled |
+| `srch-biq-benefits-iq-bb2168f95c9d` | Canada East, Basic, Succeeded; local/key auth disabled |
+| `doc-biq-benefits-iq-bb2168f95c9d` | Canada Central, Succeeded; local/key auth disabled |
+| `aoai-biq-benefits-iq-bb2168f95c9d`, deployment `benefits-chat` | Canada East, Succeeded; regional Standard `gpt-4.1-mini` `2025-04-14`, capacity 20, `NoAutoUpgrade`; local/key auth disabled |
+
+These and the foundation can incur charges while paused. No source/schema seed,
+index population, fresh OCR/runtime SQL permission proof, live model stream,
+application deployment or public/browser acceptance has run. The ignored state
+may lack a completed `data` receipt even though these resources exist; do not
+recreate environment IDs or interpret missing phase output as resource absence.
+No resource was deleted, no SQL policy bypass attempted and no Fabric operation
+performed. Preserve existing ownership/state for reconciliation.
+
+Activity Log and the exact definition identify inherited management-group
+assignment `MCAPSGovDeployPolicies`, definition `AzureSQL_PublicNetwork_Modify`,
+which modifies SQL `publicNetworkAccess` to `Disabled`. The assignment is
+`Default` enforcement with no assignment/initiative parameter overrides. It
+explicitly permits a perimeter-secured path, but no perimeter is configured.
+Successful Provider validation/what-if did not prevent the policy modification.
+
+ARM ancestor-inclusive discovery returns eight assignments, rather than the
+three returned by the earlier CLI subscription listing:
+`GET /subscriptions/<approved-subscription>/providers/Microsoft.Authorization/policyAssignments?api-version=2023-04-01`.
+The bootstrap now inventories these assignments/nested initiatives before
+builds/writes, rejects a compiled SQL template unless public access is
+unconditionally Disabled without firewall rules, and permits the known modifier
+only for that private-SQL topology. Denied,
+malformed, paginated or excessive initiative discovery fails explicitly; no
+partial list is treated as absence. This is not a generic policy evaluator:
+conditions, overrides and exemptions still require review.
+
+**User-approved revision:** a Canada East VNet, exclusively delegated
+workload-profile Consumption app subnet, separate SQL private-endpoint subnet,
+SQL private endpoint/private DNS and a new VNet-integrated external environment.
+Preserve the current environment/data resources and keep SQL PNA Disabled.
+Only the frontend could later expose public ingress after acceptance; Python
+remains internal and validates the exact web MI. No NAT gateway, Premium
+registry, dedicated compute or policy exemption is proposed.
+
+Primary [Container Apps network-type documentation](https://learn.microsoft.com/en-us/azure/container-apps/networking#virtual-network-type)
+confirms the existing default-network environment cannot be converted in place.
+[Managed network resources](https://learn.microsoft.com/en-us/azure/container-apps/custom-virtual-networks#managed-resources)
+add a load balancer and ingress/egress standard public IP charges.
+Retail meters checked: IP $0.005/hour each in Canada East; global standard LB
+$0.025/hour; global standard private endpoint $0.01/hour; first private DNS zone
+$0.50/month. Two IPs + LB + endpoint + zone are approximately $33.35/730h
+before processing/queries. Propose **US$35-US$50/month extra**, not a quote/cap;
+roughly US$190-US$565 total original light-use allowance before retained existing
+environment charges and sustained SQL activity. No networking resource has been
+created yet. The user explicitly approved this scope and incremental allowance.
+Actual revised policy/RBAC/quota acceptance remains required.
+
+The policy's alternative NSP route is not a proven fallback:
+[Azure SQL NSP integration is preview](https://learn.microsoft.com/en-us/azure/azure-sql/database/network-security-perimeter?view=azuresql).
+It would require explicit preview/architecture approval, Enforced mode and actual
+caller/deny proof, not merely a tag or setting. No NSP is created.
+The user selected "Approve private networking and the additional cost".
+Revise IaC, mark Ready for Validation, invoke azure-validate and only then
+azure-deploy. No old environment/resource deletion, NAT gateway, Premium tier,
+Fabric change, exemption or public SQL re-enablement is authorized.
+
+The revision is implemented locally in `infra/network.bicep`, `infra/data.bicep`,
+the bounded job/bootstrap entry and `service/sql_network_probe.py`. The original
+environment remains the minimal identity-proof environment; new setup, source
+and acceptance jobs use distinct names in the VNet-integrated environment.
+SQL endpoint approval/public-access/Entra-only checks precede a fresh private-DNS
+and managed-identity SQL connection probe; only then may synthetic seeding run.
+Runtime-source proof independently repeats private DNS and constrained SQL
+authorization. Azure-generated NIC ownership is accepted only through its
+explicit attachment to the exact tagged SQL endpoint, not arbitrary untagged NICs.
+All Bicep compiles; full Python run before the last two ownership tests:
+279 pass, 11 optional HTTP skips. Latest targeted network/bootstrap/source suite:
+62 pass. Actual revised Provider validation/what-if and image rebuild/live
+connectivity remain mandatory; none of those is inferred from local results.
+
+Private-network revision validation (azure-validate):
+- [x] CLI/sign-in: existing approved subscription/tenant; ancestor-inclusive
+  policy/initiative reads succeed with no permission or exemption change.
+- [x] Compilation: foundation/job/data/network/hosting; network compiles without
+  template warnings after using the cloud SQL DNS suffix and distinct module name.
+- [x] Provider validation: actual-ID `az deployment group validate` for
+  `infra/data.bicep` and `infra/network.bicep`, recorded foundation tags and
+  setup/API principals/log workspace; both Succeeded.
+- [x] What-if: same actual-ID arguments with `--validation-level Provider`,
+  `--no-pretty-print --result-format ResourceIdOnly`; data Succeeded with 20
+  entries, network Succeeded with seven Create entries, no Delete in either.
+  Evidence: `.azure/private-data-validation.json` and
+  `.azure/private-network-validation.json` (ignored).
+- [x] Static roles: no new data-role grants, user assignment, consent or broad
+  role. Reuse scoped web/API/setup identities and logs/registry/data resources.
+- [x] Functional contracts: 63 targeted network/bootstrap/source tests pass,
+  including mixed/public/wrong-subnet DNS, secret inputs, missing SQL results,
+  partial/denied policy discovery, owned generated NICs and deletion-preview
+  refusal. The full preceding Python run is recorded above.
+- [x] Build path: existing accepted actual API/web image builds establish the
+  approved managed-build mechanism; the changed API must rebuild, run its tests
+  and pass fresh exact-image scans before data/network writes. No local Docker
+  success or fresh-image acceptance is claimed by this validation.
+- [ ] Post-create: Approved endpoint, SQL PNA Disabled/Entra-only, private DNS
+  and actual managed-identity SQL login; schema/source seeding, runtime grants,
+  fresh Search/OCR, regional model streaming, private apps and public acceptance.
+
+The orchestrator now performs successful Provider validation **and** what-if
+before every ARM create, rejecting any Delete preview. Hosting is validated
+again against the actual new environment before creation. Continue through
+azure-deploy within the approved bounded revision; do not broaden paid scope
+or expose the frontend before live gates pass.
 
 ## 8. Implementation and rerun plan
 

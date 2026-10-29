@@ -19,8 +19,13 @@ standing capacity cost, improve reuse and one-command setup, and retain core
 managed-identity service authentication, constrained demo views, audit and
 explicit human-action controls. Anonymous demo views are not authenticated roles.
 
-**Status: the Canadian foundation is created; application deployment and live
-integration proof remain incomplete. No public application URL exists.**
+**Status: partially provisioned; preparing the user-approved Canadian private-SQL
+revision after an inherited network-policy block. No public application URL exists.**
+Both runtime images passed exact-digest scans, and real managed-identity caller
+validation passed its positive/four-negative proof. SQL/database, Search,
+Document Intelligence and the approved regional model deployment now exist,
+but SQL connectivity is blocked; no sources are seeded and neither application
+is deployed. These existing resources can incur charges while paused.
 The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
 implements the staged cloud entry point; **its full Azure execution is not yet verified**.
 No cloud URL, fabricated
@@ -59,13 +64,39 @@ python scripts\deploy.py --subscription <subscription-guid> --environment benefi
 ```
 
 The default command performs read-only Azure context checks, local compilation
-and build-input checks; **it is not a quota/policy or live-service acceptance
+and build-input checks. It now reads ancestor-inclusive ARM policy assignments
+and nested initiatives, failing closed on incomplete/denied discovery before
+another build or paid write. The compiled SQL template must unconditionally
+disable public access and contain no firewall rules; the approved private
+topology is compatible with the discovered SQL modifier. This conservative
+gate does not evaluate arbitrary
+policy conditions, overrides or exemptions. **It is not a quota/policy or live-service acceptance
 certificate**. The execution path creates/adopts only its recorded, tagged
 environment, configures the owned resource audience, provisions the minimal
 foundation, builds/scans the API, proves exact MI claims, creates data services,
 seeds SQL/Search, verifies runtime SQL permissions/Search/fresh OCR, and tests
 private apps/model streams before public exposure. No hidden hand-seeding or
 source attachment is required. ARM success or `/health` alone is not acceptance.
+
+**Current deployment blocker:** inherited management-group assignment
+`MCAPSGovDeployPolicies` applies `AzureSQL_PublicNetwork_Modify`, which changed
+SQL public network access to `Disabled`. The Azure-services firewall rule then
+failed with `DenyPublicEndpointEnabled`, despite successful Provider validation
+and what-if. Earlier subscription/RG-only policy listings did not reveal the
+inherited assignment; those listings were incomplete evidence, not policy clearance.
+SQL remains Entra-only. No policy exemption, exclusion tag or public-network
+reenablement is attempted. Do not discard saved state or retry the old public-SQL
+template. The user subsequently approved compliant private connectivity.
+
+The **user-approved, not yet deployed**, compliant revision adds a
+Canadian VNet, delegated app subnet, separate SQL endpoint subnet, SQL private
+endpoint/private DNS and a new VNet-integrated Consumption environment.
+[The existing environment cannot change network type](https://learn.microsoft.com/en-us/azure/container-apps/networking#virtual-network-type);
+it and the existing data services would be preserved, not deleted or duplicated.
+The approved additional network planning allowance is US$35-US$50/month; see costs below.
+SQL Network Security Perimeter support is documented
+[preview](https://learn.microsoft.com/en-us/azure/azure-sql/database/network-security-perimeter?view=azuresql),
+not a verified alternate connection. Neither network option is provisioned.
 
 **User-approved build-plane exception:** standard ACR managed builds are used
 with the planned Basic registry because this host has no Docker, Podman,
@@ -137,6 +168,7 @@ than introducing a new storage account or capacity dependency.
 | pytest patched from 9.0.2 to 9.0.3 | Resolve `CVE-2025-71176` / `GHSA-6w46-j5rx-g56g` without a cross-major override | Locked Python dependency audit is clean; this does not replace full built-image/OS scanning |
 | Staged Python/Azure CLI/Bicep entry instead of proposed azd hooks | Make identity/image/private-acceptance gates explicit and resumable | We maintain the small deployment orchestrator; no `azd up` support is claimed |
 | Standard managed ACR builds, with build-location uncertainty explicitly accepted by the user | No local Linux builder; reduce additional setup and builder cost | Canadian build execution is unverified; this narrow source/image exception does not change Canadian workload-data/inference requirements |
+| User-approved private SQL endpoint/DNS and new Canadian VNet-integrated Consumption environment | Respect the inherited policy disabling public SQL; the existing environment cannot change network type | Approximately US$35-US$50/month additional networking; retain old resources, no exemption or public SQL re-enablement. Private DNS is a non-regional infrastructure name-resolution service, not a Canadian data-store guarantee |
 | Distroless Node 24 and Azure Linux 3 / Python 3.12 runtime candidates | Remove known High/Critical paths found in the prior Debian runtime candidates without broad vulnerability ignores | Local Python remains 3.11-compatible; actual final images, ODBC/native packages and Python 3.12 behavior still require build/run/scan acceptance |
 
 ### Chat replacement and adding CopilotKit back
@@ -376,6 +408,19 @@ SQL/search tier, hard spending cap or guaranteed auto-pause is claimed.
 Source: [Azure Retail Prices API](https://prices.azure.com/api/retail/prices);
 actual agreement/billing meters still govern.
 
+The user explicitly approved the private-SQL revision and additional allowance. Additional
+published network meters checked October 29, 2026: two Canada East static public
+IPs at $0.005/hour each, global standard load-balancer meter $0.025/hour,
+global standard private-endpoint meter $0.01/hour, and first private DNS zone
+$0.50/month: approximately **$33.35/730 hours before data processing and queries**.
+Allow roughly **US$35-US$50/month extra**, not a quote/cap, and no NAT gateway,
+dedicated compute or Premium registry. [Managed VNet resources are separately
+billed](https://learn.microsoft.com/en-us/azure/container-apps/custom-virtual-networks#managed-resources),
+including ingress/egress IPs and the load balancer. This would raise the original
+light-use planning range to roughly US$190-US$565/month, excluding the existing
+environment's retained charges and SQL's sustained-activity caveat above.
+Do not treat the original US$515 upper allowance as a hard cap or guaranteed cost.
+
 Starter removes the prior $300-$500/month continuous-F2 compute allowance;
 it creates no Fabric running charge. Enterprise's historical combined
 $455-$1,015/month illustration is not a verified F2 quote and does not authorize
@@ -403,11 +448,17 @@ identities have separate constrained SQL/Search permissions. Setup jobs have
 no ingress, schedule or automatic retry. This is a demo maintenance tradeoff,
 not a production privileged-access-management solution.
 
-The SQL Azure-services firewall rule permits Azure-origin traffic beyond this
-subscription; it is **not private networking**. Entra-only authentication and
-database authorization remain mandatory. Data-service public endpoints disable
-local/key auth. A customer requiring private endpoints needs a separately
-reviewed topology/cost, not a claim that this showcase already implements one.
+The revised SQL template keeps public access Disabled and creates no
+Azure-services firewall rule. Setup/API jobs and applications use a separate
+VNet-integrated environment, private endpoint and private DNS; the original
+default-network environment remains untouched. A read-only setup-identity probe
+must resolve the SQL hostname only inside the endpoint subnet and connect using
+ODBC managed-identity authentication with certificate validation before seeding.
+Control-plane checks also require an Approved SQL endpoint and Entra-only SQL.
+Runtime-source proof independently repeats private DNS and constrained SQL
+permission checks. These are deployment gates, not already-passed live claims.
+Other data-service public endpoints retain disabled local/key auth and scoped
+managed-identity authorization; this is not an all-services-private topology.
 
 On failure, inspect the reported phase/execution and recorded dedicated resource
 group before rerunning. Paid resources can remain allocated after failure.
