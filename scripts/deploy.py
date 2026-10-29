@@ -343,19 +343,25 @@ def job(azure, state, purpose, identity, variables, receipt):
         raise DeploymentError("JOB_EXECUTION_IMAGE_MISMATCH")
     logs = azure.text("containerapp", "job", "logs", "show", "--name", name,
                       "--execution", execution_name, "--resource-group", names(state)[1],
-                      "--container", "governed-job", "--format", "json", "--tail", "100")
-    records = [json_output(line) for line in logs.splitlines() if line.strip()]
+                      "--container", "governed-job", "--format", "text", "--tail", "100")
+    result = job_receipt(logs, purpose, receipt)
+    return {"execution": execution_name, "status": receipt, "image": state["apiImage"],
+            "receipt": result}
+
+
+def job_receipt(logs, purpose, receipt):
     receipts = []
-    for record in records:
-        line = record.get("Log", "")
-        if isinstance(line, str) and line.startswith("{"):
-            result = json_output(line)
+    for line in logs.splitlines():
+        match = re.fullmatch(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?"
+            r"(?:Z|[+-]\d{2}:\d{2}) stdout F (\{.*\})", line)
+        if match:
+            result = json_output(match.group(1))
             if result.get("status") == receipt:
                 receipts.append(result)
     if len(receipts) != 1 or not valid_receipt(purpose, receipts[0]):
-        raise DeploymentError(f"JOB_{purpose.upper().replace('-', '_')}_RECEIPT_REQUIRED_{execution_name}")
-    return {"execution": execution_name, "status": receipt, "image": state["apiImage"],
-            "receipt": receipts[0]}
+        raise DeploymentError(f"JOB_{purpose.upper().replace('-', '_')}_VALID_COMPLETE_RECEIPT_REQUIRED")
+    return receipts[0]
 
 
 def valid_receipt(purpose, receipt):

@@ -254,13 +254,32 @@ def test_job_receipt_is_bound_to_actual_execution_image(monkeypatch):
                "data_services_exercised": False, "negative_checks": [
                    "api_client_id", "runtime_client_id", "runtime_principal_id", "tenant_id"]}
     instance.run.side_effect = [{"name": "execution-1"}, execution]
-    instance.text.return_value = json.dumps({"Log": json.dumps(receipt)})
+    instance.text.return_value = "2026-10-29T14:37:46.6513296Z stdout F " + json.dumps(receipt)
     result = deploy.job(instance, state, "identity-proof", {"resourceId": "identity"}, {},
                         "managed_identity_caller_verified")
     assert result["receipt"] == receipt and result["image"] == state["apiImage"]
     assert "governed-job" in instance.text.call_args.args
+    assert instance.text.call_args.args[instance.text.call_args.args.index("--format") + 1] == "text"
     execution["properties"]["template"]["containers"][0]["image"] = "wrong-image"
     instance.run.side_effect = [{"name": "execution-2"}, execution]
     with pytest.raises(deploy.DeploymentError, match="IMAGE_MISMATCH"):
         deploy.job(instance, state, "identity-proof", {"resourceId": "identity"}, {},
                    "managed_identity_caller_verified")
+
+
+@pytest.mark.parametrize("framing", ["unframed", "stderr", "partial", "duplicate", "embedded"])
+def test_job_receipt_rejects_partial_unstructured_or_spoofed_log_records(framing):
+    receipt = {"status": "managed_identity_caller_verified", "token_exposed": False,
+               "data_services_exercised": False, "negative_checks": [
+                   "api_client_id", "runtime_client_id", "runtime_principal_id", "tenant_id"]}
+    payload = json.dumps(receipt)
+    valid = "2026-10-29T14:37:46.6513296Z stdout F " + payload
+    invalid = {
+        "unframed": payload,
+        "stderr": valid.replace("stdout", "stderr"),
+        "partial": valid.replace("stdout F ", "stdout P "),
+        "duplicate": valid + "\n" + valid,
+        "embedded": "2026-10-29T14:37:46Z stdout F " + json.dumps({"message": payload}),
+    }
+    with pytest.raises(deploy.DeploymentError, match="VALID_COMPLETE_RECEIPT_REQUIRED"):
+        deploy.job_receipt(invalid[framing], "identity-proof", receipt["status"])
