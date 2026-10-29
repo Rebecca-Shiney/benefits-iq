@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Ready for Validation: initial full Canadian private/public integration deployment succeeded from be27ab0, but browser review found insufficient model intake grounding. Frontend was explicitly returned to private ingress; require the matching read-only tool and explicit completeness/source result, then repeat image/private/public/browser gates. Existing private SQL, MI, Search/OCR and real model proofs remain recorded; the stricter application revision is not yet accepted live. No new resource/permission/region scope, policy bypass or deletion is authorized.**
+**Validated: stricter chat-grounding revision, with frontend held private pending redeployment acceptance. Initial full Canadian private/public integration succeeded from be27ab0; the browser-discovered grounding correction requires matching read-only tools and explicit completeness/source results. Local SDK/tool tests and renewed read-only Azure/IaC/policy preflight pass. Fresh image/private/public/browser gates remain mandatory. No new resource/permission/region scope, policy bypass or deletion is authorized.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -1089,6 +1089,38 @@ both status and intake presets, rather than accepting fluent model text alone.
 Tool arguments/results remain filtered from the browser proxy. Model prose is
 advisory and can still be wrong; authoritative case/evidence and human controls
 remain independent. Rebuild/scan and repeat actual private/public/browser checks.
+
+### Validation renewal for required-tool grounding, 2026-10-29 UTC
+
+After committed `2414e55`, all validation checks for the unchanged staged recipe pass:
+- [x] Azure CLI/auth/context and Bicep compilation/template syntax:
+  `python scripts/deploy.py --subscription 85489118-9695-41ac-ba0f-e14ba8837c91 --environment benefits-iq`
+  with the approved scanner path returns `read_only_preflight_complete`.
+- [x] Policy/SQL/build context: same command repeats ancestor-inclusive policy
+  discovery, unconditional private-only SQL compilation checks, and clean
+  committed allowlisted source validation. Actual CLI confirms frontend
+  `external=false`, Succeeded after the deliberate hold.
+- [x] Unchanged templates: the full immediately preceding rollout completed
+  successful Provider validation/what-if/no-Delete gates for all existing
+  resources and hosts. This revision changes application/tests/docs only;
+  Provider/what-if gates must repeat before every subsequent ARM create.
+- [x] Static/live roles: no IaC or role changes; the fresh eight-grant inventory
+  above verifies three AcrPull plus five exact data-service roles. Browser
+  requests still cannot provide runtime credentials.
+- [x] Functional build coverage: full Python suite **295 passed, 11 optional
+  HTTP skips**. Four actual installed SDK HTTP/tool tests cover all public
+  reviewer presets and contact status-only dispatch; they verify the required
+  named first call, scoped read, explicit JSON facts and final-call choice reset.
+  Acceptance regressions reject prose-only/wrong/unclosed read-tool streams.
+- [x] Dependency/build mechanism: fresh full npm audit reports **zero known
+  vulnerabilities**. Previously built/scanned production images verify the
+  unchanged approved managed-build path and final-runtime toolchain. The new
+  API must still run image tests and exact-digest secret/vulnerability scans
+  before deploying its revised code. No fresh-image or live grounding success
+  is inferred from local tests.
+
+Validation authorizes azure-deploy to repeat the bounded existing staged command,
+not to skip the renewed private/public model-read-tool gates.
 
 ## 8. Implementation and rerun plan
 
