@@ -20,9 +20,9 @@ managed-identity service authentication, constrained demo views, audit and
 explicit human-action controls. Anonymous demo views are not authenticated roles.
 
 **Status: cloud implementation is in progress, not deployed or live-verified.**
-The working loopback demo below is unchanged in scope. `azd up` is the intended
-cloud entry point, **not yet a working quickstart on this branch**: infrastructure,
-bootstrap and runtime adapters are still being prepared. No cloud URL, fabricated
+The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
+implements the staged cloud entry point; **its Azure execution is not yet verified**.
+No cloud URL, fabricated
 integration success or healthcare-compliance claim is supplied.
 
 | Profile | Intended scope | Current implementation status |
@@ -34,13 +34,48 @@ integration success or healthcare-compliance claim is supplied.
 
 ### Showcase quickstart contract and minimal inputs
 
-Keep using the local quickstart below until the cloud entry point is implemented
-and validated. The intended showcase sequence is one-time interactive Azure/azd
-sign-in, confirmed subscription/Canadian region, then `azd up` from the repository
-root. Bootstrap must discover prerequisites with explicit errors, generate and
-connect the resources, initialize schema, seed only synthetic records/documents,
-populate Search and verify readiness. No hidden hand-seeding or source attachment
-is required. An ARM deployment alone will not count as a working accelerator.
+The deployment entry is Python + Azure CLI + staged Bicep, **not `azd up`**.
+Explicit stages make it possible to prove managed-identity issuance before
+creating the more expensive data services, scan actual image digests, and test
+private applications before enabling public frontend ingress. This avoids
+unimplemented azd hooks or a misleading one-step success claim.
+
+Prerequisites: Python 3.11+, Git, an interactively signed-in Azure CLI with
+Bicep and the `containerapp` extension, plus a verified
+[Trivy](https://github.com/aquasecurity/trivy/releases) executable. Set
+`BENEFITS_TRIVY` to its absolute path if it is not on PATH. The script refuses
+uncommitted application/build-context changes. It never uploads the working
+directory wholesale: context comes from committed, allowlisted source files,
+with no attachments, databases, `.env`, CLI caches or `.azure` artifacts.
+
+```powershell
+az login
+python scripts\deploy.py --subscription <subscription-guid> --environment benefits-iq
+# After approved scope and successful azure-validate / azure-deploy handoff:
+python scripts\deploy.py --subscription <subscription-guid> --environment benefits-iq --deploy
+```
+
+The default command performs read-only Azure context checks, local compilation
+and build-input checks; **it is not a quota/policy or live-service acceptance
+certificate**. The execution path creates/adopts only its recorded, tagged
+environment, configures the owned resource audience, provisions the minimal
+foundation, builds/scans the API, proves exact MI claims, creates data services,
+seeds SQL/Search, verifies runtime SQL permissions/Search/fresh OCR, and tests
+private apps/model streams before public exposure. No hidden hand-seeding or
+source attachment is required. ARM success or `/health` alone is not acceptance.
+
+**User-approved build-plane exception:** standard ACR managed builds are used
+with the planned Basic registry because this host has no Docker, Podman,
+BuildKit or installed WSL. This is simpler and avoids an additional regional
+builder's setup and cost. **Canadian execution of the standard build workers
+is unverified**; this does not establish that foreign execution occurs. The
+exception covers application source/images only, never secrets, real health
+data, uploaded documents, application-data processing or model inference.
+Strict build-residency alternatives are an approved local builder or a supported
+region-pinned builder with separate setup/cost approval. Microsoft's documented
+[dedicated ACR pools](https://learn.microsoft.com/en-us/azure/container-registry/tasks-agent-pools)
+require Premium and are preview-region limited, including Canada Central.
+They are not automatically provisioned.
 
 Minimum non-secret inputs are subscription and Canadian resource regions.
 Discover tenant/deployer context; generate resource/application IDs and configure
@@ -61,7 +96,7 @@ an actionable error, not weaken service authentication or claim that a service i
 | Azure AI Search Basic | Canada East; versioned governed criteria populated from synthetic SQL sources, backend-enforced query scope |
 | Azure OpenAI model | Canada East regional **Standard**, `gpt-4.1-mini`, version `2025-04-14`; no Global/DataZone fallback |
 | Document Intelligence S0 | Canada Central; actual binary document analysis, confidence and source evidence |
-| Server-only Azure Monitor/Application Insights | Canada East; sanitized operational metadata, no browser/health-payload tracing |
+| Server-only Azure Monitor / Log Analytics | Canada East; sanitized console/system metadata, 30-day retention and 0.1-GB/day ingestion allowance; no browser/payload tracing or separately deployed Application Insights |
 
 Starter **does not** create/resume Fabric capacity, alter existing workspaces,
 request Purview Graph permissions, apply labels, create a Fabric semantic model,
@@ -86,6 +121,9 @@ than introducing a new storage account or capacity dependency.
 | First-party chat/proxy replaces CopilotKit UI/runtime and AG-UI JavaScript client | User-approved removal of vulnerable required Zod 3 paths without an unsafe cross-major override | We maintain the small chat UI/protocol reader; genuine Python MAF/AG-UI remains. CopilotKit can return after compatible patched releases are validated |
 | Bounded request/response parsing | Limit malformed/oversized input and sanitize streamed events independently of UI libraries | Limits, cancellation and protocol compatibility remain application responsibilities |
 | pytest patched from 9.0.2 to 9.0.3 | Resolve `CVE-2025-71176` / `GHSA-6w46-j5rx-g56g` without a cross-major override | Locked Python dependency audit is clean; this does not replace full built-image/OS scanning |
+| Staged Python/Azure CLI/Bicep entry instead of proposed azd hooks | Make identity/image/private-acceptance gates explicit and resumable | We maintain the small deployment orchestrator; no `azd up` support is claimed |
+| Standard managed ACR builds, with build-location uncertainty explicitly accepted by the user | No local Linux builder; reduce additional setup and builder cost | Canadian build execution is unverified; this narrow source/image exception does not change Canadian workload-data/inference requirements |
+| Distroless Node 24 and Azure Linux 3 / Python 3.12 runtime candidates | Remove known High/Critical paths found in the prior Debian runtime candidates without broad vulnerability ignores | Local Python remains 3.11-compatible; actual final images, ODBC/native packages and Python 3.12 behavior still require build/run/scan acceptance |
 
 ### Chat replacement and adding CopilotKit back
 
@@ -169,10 +207,14 @@ at build time), enforces cloud mode/tracing-off and formats library failures
 as metadata without raw provider messages or tracebacks. Operational error codes
 and traces remain observable.
 
-Docker is unavailable on the current host, so those images have **not** been
-built/run or remotely scanned. Full image/package validation must precede public
-exposure. Resource IaC, remote image build/push, backend audience/Azure role bootstrap,
-setup-job orchestration and reproducible cloud readiness checks remain unfinished.
+Docker is unavailable on the current host, so final application images have
+**not** been built/run or scanned. Candidate distroless Node 24 and Microsoft
+Azure Linux 3 Python 3.12 base scans found no High/Critical issues; these are
+**not final-image results**. Full image/package and secret scanning must precede
+public exposure; incomplete or wrong-digest scan reports fail closed.
+`infra/foundation.bicep`, `infra/data.bicep`, `infra/job.bicep` and
+`infra/hosting.bicep` compile; audience/bootstrap/private-acceptance and runtime
+source probes have local tests, not Azure execution evidence.
 The source/bootstrap implementation is `service/cloud_seed.py`: it generates
 original deterministic synthetic PDFs, inserts version/hash-checked SQL sources
 and a separate aggregate snapshot, and creates/seeds a governed Search index.
@@ -191,7 +233,7 @@ checks, and emits no token. Its unit tests use signed synthetic tokens. It has
 
 The user explicitly superseded initial reviewer enrollment with a public
 showcase. No initial reviewer or Hira assignment is created or required.
-`azd up` must not be presented as working, nor `/health` liveness as proof of ready
+Neither the unexecuted bootstrap nor `/health` liveness is proof of ready
 cloud connections. The role-less app-only caller path has signed-token tests,
 not live managed-identity issuance proof yet.
 
@@ -310,9 +352,35 @@ accelerator estimates. Exact final meters remain to be confirmed.
 For reproducible local upgrades, commit dependency manifests/lockfiles, run
 `npm ci` and `pip install -r requirements.lock.txt`, then the validation commands
 below. Stop a running production preview before replacing its `.next` output.
-Cloud upgrades must use versioned migrations and content-hash seeds, preserve
-human decisions/audit, retain resource IDs and pass rerun/live checks; no such
-cloud upgrade is claimed verified yet.
+Cloud upgrades use the same environment/state and deployment command after
+committing and validating changes. Preserve `.azure/showcase-<environment>.json`:
+it records non-secret ownership IDs, actual image digests and phase receipts.
+Do not delete it to evade a failed deployment or create duplicate resources.
+A rerun first makes an existing frontend internal: **upgrades intentionally
+have downtime** while dependencies are revalidated. Version/hash-checked seeds
+preserve human decisions/audit, and source probes perform fresh OCR/Search
+without changing cases. Acceptance skips workflow writes when prior evidence
+or a human decision exists. Public acceptance failure attempts to return the
+frontend to private ingress. No cloud upgrade is claimed verified yet.
+
+Setup uses a distinct, non-serving identity with SQL bootstrap administration
+and scoped Search index administration. That privilege is **retained for
+explicit manual migrations/seeding**, not silently claimed revoked; runtime
+identities have separate constrained SQL/Search permissions. Setup jobs have
+no ingress, schedule or automatic retry. This is a demo maintenance tradeoff,
+not a production privileged-access-management solution.
+
+The SQL Azure-services firewall rule permits Azure-origin traffic beyond this
+subscription; it is **not private networking**. Entra-only authentication and
+database authorization remain mandatory. Data-service public endpoints disable
+local/key auth. A customer requiring private endpoints needs a separately
+reviewed topology/cost, not a claim that this showcase already implements one.
+
+On failure, inspect the reported phase/execution and recorded dedicated resource
+group before rerunning. Paid resources can remain allocated after failure.
+An existing deployment lock requires checking the original process, ARM
+deployment and running jobs before manually clearing that specific stale file;
+never launch a competing deployment or automatically delete resources.
 
 Cloud cleanup must target only the dedicated accelerator resource group and
 recorded app registrations/assignments after explicit destructive-action approval.

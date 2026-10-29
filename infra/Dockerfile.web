@@ -1,8 +1,9 @@
-FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build
+FROM node:24-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --no-fund && npm audit --omit=dev --audit-level=low
+RUN npm install --global npm@11.19.1 --ignore-scripts --no-fund --no-audit \
+    && npm ci --ignore-scripts --no-fund && npm audit --omit=dev --audit-level=low
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
@@ -10,12 +11,12 @@ COPY agents/showcase-options.json ./agents/showcase-options.json
 COPY next.config.mjs next-env.d.ts tsconfig.json ./
 RUN npm run build && npm prune --omit=dev --ignore-scripts --no-fund --no-audit
 
-FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:a6c34457f6da4295807e051411c7783739c65b997a324fed14e4fa292615ae91
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 BENEFITS_PROFILE=showcase PORT=3000
-COPY --from=build --chown=node:node /app/.next ./.next
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/package.json /app/next.config.mjs ./
-USER node
+COPY --from=build --chown=65532:65532 /app/.next ./.next
+COPY --from=build --chown=65532:65532 /app/node_modules ./node_modules
+COPY --from=build --chown=65532:65532 /app/package.json /app/next.config.mjs ./
+USER 65532
 EXPOSE 3000
-CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]
+CMD ["node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]

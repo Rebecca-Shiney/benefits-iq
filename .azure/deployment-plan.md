@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Approved: public synthetic-only showcase, Azure-native cloud connections and first-party chat. Preparation in progress; not ready for validation or deployment. Enterprise governance remains gated.**
+**Validated: minimal foundation/build-bootstrap phase only. Public synthetic showcase and paid core scope remain approved. Application/data deployment, image and live-acceptance gates remain outstanding; not deployed. Enterprise governance remains gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -55,6 +55,63 @@ allowance. Missing permissions remain explicit blockers.
 The original implementation and dashboard revision remain on the existing branch.
 Neither source attachment has been changed or committed.
 
+### Current staged deployment preparation
+
+The user explicitly approved standard ACR managed builds for source/images only,
+with **Canadian build execution unverified**. This is not permission for
+non-Canadian workload data or model processing. Keep the planned Basic registry;
+do not add Premium, a preview dedicated pool or a separate builder. The reason is
+the absence of Docker/Podman/BuildKit/installed WSL on this host and avoiding
+extra builder setup/cost. The README discloses uncertainty rather than asserting
+that foreign processing is proven, and describes approved local or separately
+approved region-pinned builders as strict-build-residency alternatives.
+
+The selected recipe is **AZCLI + staged Bicep**, through `scripts/deploy.py`,
+not the earlier proposed azd hooks. The user allowed a clearly documented single
+entry command. Default execution checks Azure context, compiles templates and
+checks committed build inputs without Azure writes; it is not a full quota or
+service-readiness certificate. Deployment requires the azure-validate ->
+azure-deploy workflow and the already approved scope.
+
+Prepared stages: ownership/state lock -> owned resource audience -> minimal
+foundation -> immutable API build/complete exact-digest vulnerability and secret
+scan -> real MI positive/four-negative proof -> Canadian data services ->
+version/hash-preserving SQL/Search setup -> API-MI runtime permission, scoped
+Search and fresh OCR proof -> private API/web -> frontend/private-backend and
+real-model acceptance -> correctly configured public frontend -> repeat
+acceptance, reverting private on failure. Python ingress is never external.
+Existing public frontend ingress is retracted before upgrading dependencies;
+this intentionally favors safe, explicit downtime over unimplemented blue/green.
+
+Owned API registration configuration is tested locally; Graph writes/actual
+owner/default-user rights remain deployment gates, not assumed tenant admin.
+No role/consent/credential/owner grant is added to bypass a refusal. Discovery
+errors or ownership/configuration collisions stop rather than create fallbacks.
+Actual image/receipt association is checked; no substring-only success test.
+
+All four Bicep entry templates compile. Local suite: 243 passed, 11 optional
+HTTP tests skipped in the full unit run; those 11 then passed separately against
+the existing local preview. Full npm and locked Python audits report no known
+vulnerabilities. Candidate distroless Node24 and Azure Linux3/Python3.12 base
+scans have no High/Critical findings, but **final application images have not
+been built/scanned**. Cloud Python 3.12 compatibility/ODBC and final OS/native/
+bundled-package scans remain mandatory in the remote build before publication.
+No Azure write, resource or deployed application is claimed.
+
+Azure Monitor/Log Analytics is the actual prepared telemetry surface:
+sanitized console/system events, no HTTP/payload categories, no workspace shared
+key, 30-day retention and a 0.1-GB/day ingestion allowance (not a hard spend cap).
+No separate Application Insights resource/connection is implemented for showcase.
+SQL is Entra-only with the Azure-services firewall rule, which permits Azure
+origins outside this subscription and is not private networking.
+
+The distinct setup identity retains SQL bootstrap administration and scoped
+Search index administration for explicit manual migrations/reruns. This revises
+the earlier proposed immediate revocation: runtime identities remain separately
+restricted, jobs have no ingress/schedule/automatic retry, and retained setup
+privilege is disclosed rather than falsely described as removed. No shared
+resource, capacity or workspace is touched; no automatic deletion/reset is added.
+
 ### Current showcase implementation evidence
 
 The explicit `showcase` profile now has anonymous allowlisted view selection,
@@ -74,9 +131,9 @@ one invocation per tool and 500 output tokens per model call. No hard aggregate
 token/spend cap is claimed. Tasks are finite per case/kind, briefs capped at ten
 per case, decisions immutable and audit actors explicitly anonymous.
 
-Local evidence: 177 backend tests pass, 11 real-HTTP tests require a separately
-running preview, 21 request/protocol tests pass, production build/typecheck pass,
-full npm audit reports zero vulnerabilities, and 14 browser tests pass with one
+Local evidence: 196 backend tests pass including all 11 real-HTTP checks against a
+separately running preview; 21 request/protocol tests pass, production build/typecheck pass,
+full npm and locked Python audits report zero vulnerabilities, and 14 browser tests pass with one
 optional screenshot check skipped. Showcase browser presentation uses a clearly
 mocked cloud-profile response over the local backend; independent signed-token
 and direct-route negative tests do not represent live cloud proof. No public
@@ -90,10 +147,58 @@ infrastructure/bootstrap, remote image build/validation, real MI claim proof,
 SQL/Search/OCR/model seeding/read-write acceptance and only then public exposure.
 No Azure write, resource provisioning or Fabric operation has occurred.
 
+### Foundation IaC research and staging
+
+The official AVM pattern index was checked first. Use the supported
+`avm/ptn/azd/acr-container-app:0.5.0` pattern for the later hosting resources,
+with pre-created user-assigned identities, actual built image references,
+insecure ingress disabled and only private ingress until acceptance.
+The broad ACA landing-zone pattern would add unrelated networking/compute
+scope; use AVM resource modules for the minimal foundation instead:
+`avm/res/managed-identity/user-assigned-identity:0.6.0`,
+`avm/res/container-registry/registry:0.13.1`,
+`avm/res/operational-insights/workspace:0.16.1` and
+`avm/res/app/managed-environment:0.16.0`.
+Published versions were verified against MCR, not guessed from examples.
+
+The available tool catalog has no Azure documentation/Bicep MCP contributions.
+Use primary Microsoft documentation, official AVM sources/MCR metadata and the
+installed Bicep compiler for schema checking; do not fabricate MCP validation.
+Resource/module telemetry is disabled. Container logs use the supported
+`azure-monitor` destination plus diagnostic settings, not a stored workspace
+shared key. Explicit console/system categories avoid enabling HTTP/payload
+logging. The foundation has no public application, SQL/Search/OCR/model resource,
+Fabric operation or visitor app registration. It is not a ready accelerator.
+
+`infra/foundation.bicep` and its AVM resource module compile successfully without
+provisioning. `infra/job.bicep` also compiles. It restricts the manual job to the
+prepared identity proof or synthetic setup command, a digest-addressed private
+`benefits-api` image, one replica/completion, no automatic retry and an existing
+managed identity. Fixed showcase/tracing-off settings override caller-supplied
+job environment values. The AVM container-job toolkit pattern was inspected
+first but introduces Key Vault/image-import/scheduling services outside this
+minimal job; use published `avm/res/app/job:0.7.2` instead. Actual job/image
+execution and its orchestration remain outstanding. Read-only provider metadata
+confirms Canada East support for environments, container apps and jobs; this
+is not quota, deployment or application acceptance evidence.
+
+Sources:
+- https://azure.github.io/Azure-Verified-Modules/indexes/bicep/bicep-pattern-modules/
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/ptn/azd/acr-container-app
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/managed-identity/user-assigned-identity
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/container-registry/registry
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/operational-insights/workspace
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/app/managed-environment
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/ptn/app/container-job-toolkit
+- https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/app/job
+- https://learn.microsoft.com/en-us/azure/container-apps/log-options
+- https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
+
 ## 1. Goal and requirements
 
 Modernize the existing application into a reusable accelerator whose intended
-deployment entry point is `azd up`. Deploy actual cloud-backed capabilities,
+deployment entry point is `python scripts\deploy.py --subscription <guid> --deploy`.
+Deploy actual cloud-backed capabilities,
 not the loopback demo with different URLs.
 
 ### User-approved profiles and reason for the change
@@ -138,7 +243,7 @@ discovery and guide mapping below are Enterprise reference material only.
 | Azure AI Search Basic | Canada East; governed/versioned criteria, backend-enforced query filters |
 | Azure OpenAI | Canada East regional Standard `gpt-4.1-mini` `2025-04-14`; no Global/DataZone fallback |
 | Document Intelligence S0 | Canada Central; actual binary OCR with confidence/source evidence |
-| Server-only Azure Monitor/Application Insights | Canada East; sanitized metadata, no browser/health-payload tracing |
+| Server-only Azure Monitor/Log Analytics | Canada East; sanitized console/system metadata, no browser/payload tracing; no separate Application Insights resource |
 | Fabric/Purview/semantic model | Not created, resumed, queried or claimed by Starter |
 
 | Requirement | Proposed treatment / approval state |
@@ -185,7 +290,7 @@ literally no credential exists anywhere.
   and `fabricapp12` (F16, West US 3). An active West US 3 trial and a
   PPU-reserved listing also exist. Visibility proves neither assignment
   permission nor eligibility. No capacity has been resumed.
-- Current production npm audit reports 42 affected packages:
+- Historical pre-remediation production npm audit reported 42 affected packages:
   30 high, 6 moderate, 6 low, 0 critical. Some transitive paths lack a
   straightforward fix. Remediation, compatibility checks and a new scan
   are required before public exposure; authentication is not a waiver.
@@ -222,7 +327,7 @@ literally no credential exists anywhere.
   authentication/isolation/privacy/cancel/accessibility/build/browser tests.
   No promised release date or scheduled monitoring.
 
-### Local preparation milestone, not cloud evidence
+### Historical local preparation milestone, not cloud evidence
 
 Implemented Starter dispatch with no SQLite/demo-identity fallback; independent
 Next.js/Python Entra JWT validation; managed-identity runtime caller; public
@@ -284,7 +389,7 @@ run before application startup, not rely on the runtime to create tables.
 Keep this plan out of Ready for Validation until these and replacement validation
 are resolved. No app registration/resource/role assignment has been created.
 
-### Read-only identity-bootstrap alternatives (awaiting approval)
+### Historical read-only identity alternatives (superseded for showcase)
 
 The user has no administrator available and requested investigation, not an
 authorization change. Tenant policy reports app creation allowed. Active direct
@@ -393,7 +498,7 @@ comparisons are discovery only, not permission to use those alternatives.
 | Case/audit SQL | Canada East, `GP_S_Gen5_1`, min 0.5 / max 1 vCore | Subscription capabilities report Serverless/Available, min 0.5 supported, auto-pause supported. Propose LRS backups for this synthetic POC; no cross-geography replica. Defender policy cost and Entra bootstrap remain. |
 | Governed AI Search | Canada East, Basic, one replica/partition | Regional usage API reports Basic usage 0 / limit 12. Generic quota CLI returned no entries, not unlimited quota. Physical service provisioning still untested. |
 | Document Intelligence | Canada Central, single-service FormRecognizer S0 | `account list-skus` returns S0 with no listed restrictions in Canada Central, and an empty list in Canada East. Do not promise all services can reside solely in Canada East. |
-| ACR, Log Analytics, Application Insights | Canada East | Provider metadata advertises Canada East. Per-service setup, telemetry ingestion and remote-build region guarantees still need validation. |
+| ACR, Log Analytics | Canada East resources | Actual provisioning/telemetry still needs validation. Standard managed build execution location is unverified and narrowly user-approved for source/images only. No separate Application Insights is deployed. |
 | Enterprise-only Fabric workspace, OneLake and aggregate model | Canada East, historical `dbtdemo` F2 reuse plan | Not part of Starter. Prior governance/headroom/licensing/access gates remain; Starter must not resume or modify capacity/workspaces. |
 
 Model-capacity discovery used the documented location-based capacity endpoint,
@@ -446,9 +551,10 @@ has been performed; checks to date were read-only management/public-doc queries.
 | Versioned definitions and synthetic sources | `agents`, `skills`, `service/catalog.py`, `service/fixtures.py` | Starter SQL source/document/aggregate seed and criteria index; Enterprise-only OneLake/model integration |
 | Local launcher | `scripts/demo.py` | Preserve explicit local mode; do not treat it as the deployment command |
 
-**Proposed recipe:** azd with parameterized Bicep and a preflight/setup lifecycle.
-Do not run `azd init -t` over this existing repository. Prefer remote ACR builds
-if supported by the selected subscription and azd version; validate the build
+**Selected recipe:** AZCLI with parameterized, staged Bicep and
+`scripts/deploy.py`. No `azure.yaml`/`azd up` support is claimed.
+Do not run `azd init -t` over this existing repository. Use standard ACR builds
+with the user-approved build-location exception; validate the build
 path rather than pretending Docker is installed.
 
 The one-command lifecycle must automate resource wiring, schema setup,
@@ -508,6 +614,10 @@ substituting an API fixture.
 Browser -> public Next.js Container App -> internal Python Container App ->
 authorized Azure data planes. Only Next.js has public application ingress.
 Fabric connections in this section apply only to the opt-in Enterprise profile.
+The first three identity bullets below describe the **future authenticated
+profile**, not anonymous showcase. Showcase trusts no browser credential/role:
+it accepts only an allowlisted selected demo view plus an independently signed
+exact MI caller, with the constraints recorded above.
 
 - Use supported MSAL authorization-code + PKCE for a public SPA client and
   a tenant-specific API registration. No Entra client secret. Prefer in-memory
@@ -523,10 +633,11 @@ Fabric connections in this section apply only to the opt-in Enterprise profile.
   Backend identity: SQL application permissions, Enterprise-only scoped OneLake reads,
   Search Index Data Reader, model invocation, Document Intelligence analysis
   and sanitized telemetry ingestion. Verify exact built-in/custom roles.
-- Setup identity: temporary schema/seed/index administration. Enterprise-only
+- Setup identity: separate manual schema/seed/index administration. Enterprise-only
   setup additionally requires Fabric item/data-role and semantic-model rights.
   Separate DDL/index writes from runtime.
-  Remove elevated bootstrap access after successful initialization.
+  Showcase retains scoped setup privilege for explicit migrations/reruns,
+  isolated from runtime and disclosed in README; it is not claimed revoked.
 - OneLake requires the Storage token audience, unlike Fabric REST management.
   Use the approved regional OneLake endpoint, not an unexamined global
   endpoint. Workspace Viewer alone does not grant data-plane reads under
@@ -575,17 +686,17 @@ not be presented as a validated execution plan.
 | Resource group | 1 | Subscription permissions, naming and policy |
 | Container Apps environment | 1 | Canada Central and Canada East: verified usage 0 + proposed 1 = 1 / limit 50; consumption CPU limits remain to be checked |
 | Container Apps | 2 | CPU/memory, ingress, stream timeout, scale and cold-start behavior |
-| One-off setup job | 1 | Environment/job limits and scoped execution identity |
+| Manual proof/setup/acceptance jobs | 4 definitions, one bounded execution at a time | No ingress/schedules/automatic retry; distinct caller/setup/API identities |
 | ACR Basic registry | 1 | Registry count, remote-build availability, MI pull |
 | User-assigned managed identities | 3 | Principal creation and role-assignment authority |
 | Azure SQL server / serverless database | 1 / 1 | Entra-only administration, regional SKU availability, vCore/storage limits |
 | AI Search Basic service | 1 replica, 1 partition | Tier availability, index/vector limits, regional quota |
 | Azure OpenAI account / model deployment | 1 / 1 | Approved model/version/type, regional RPM/TPM quota and residency |
 | Document Intelligence S0 | 1 | Regional availability, analysis rate/page limits and local-auth disablement |
-| Log Analytics / Application Insights | 1 / 1 | Region, retention, Entra ingestion, daily ingestion safeguards |
+| Log Analytics / Application Insights | 1 / 0 | Canadian workspace, sanitized diagnostics, local auth off, 30-day retention and daily ingestion allowance |
 | Fabric capacity / workspace / lakehouse | 0 in Starter | Enterprise-only; no capacity/workspace operation in Starter |
 | Fabric aggregate-only semantic model | 0 in Starter | Enterprise-only; Starter uses SQL aggregate snapshots, not a semantic model |
-| Entra SPA/API registrations | 2 | App-registration authority, consent, app-role assignment and initial users/groups |
+| Entra resource API registrations | 1 | Owned single-tenant role-less app-only audience; no visitor SPA/user assignments or extra consent |
 
 The `azure-quotas` skill was invoked for the selected-subscription checks.
 Direct quota CLI was used rather than the supplied helper because that helper
@@ -598,7 +709,7 @@ limits and sources. Also check policies, provider registrations, Fabric
 availability and model deployment quota. No quota-increase request, provider
 registration or paid change is implied by read-only discovery.
 
-## 7. Cost decision brief
+## Cost decision brief
 
 **Non-binding planning allowances in USD, not a quote or a spending cap.**
 Assume a small synthetic internal demo, one Search replica, at most two app
@@ -654,6 +765,43 @@ automatic shared-capacity lifecycle policy or deletion is authorized. The user
 accepted the allowance rather than a hard ceiling. Additional uptime/cleanup
 policies require owner approval. Starter never resumes or changes capacity.
 
+## 7. Validation Proof
+
+Evidence date: **2026-10-29 UTC**. No provisioning had occurred at this validation.
+
+Validation scope is explicitly staged: first only the dedicated Canadian
+foundation and standard managed build/private MI-proof bootstrap. No SQL,
+Search, OCR/model accounts, application hosting or public ingress may be
+provisioned in this first phase. `--phase foundation` enforces that stop.
+Remote image builds/scans and image-build Python 3.12 tests must pass before
+the proof job runs; both final images must pass before progressing to data/app
+validation. This does not claim that unavailable local Docker already built them.
+
+- [x] All validation checks pass **for the foundation/bootstrap phase**:
+  - [x] Azure CLI installation: `az version`, CLI 2.91.0, containerapp extension available.
+  - [x] Authentication: explicit approved subscription/tenant enabled; no default-subscription mutation.
+  - [x] Bicep compilation: foundation/job/data/hosting compile; foundation now explicitly unwraps module outputs into the bootstrap's expected shape.
+  - [x] Template validation: `az deployment sub validate --location canadaeast --template-file infra\foundation.bicep --parameters environmentName=benefits-iq environmentId=bb2168f9-5c9d-4961-9960-f4932b863161 --validation-level Provider --subscription 85489118-9695-41ac-ba0f-e14ba8837c91`; Succeeded, error null.
+  - [x] What-if: same subscription/template/parameters with `az deployment sub what-if --validation-level Provider --no-pretty-print --result-format ResourceIdOnly`; Succeeded, error null, eight creates, no deletes. Three ACR role-assignment IDs are Unsupported because new identity principal IDs do not yet exist; static roles/scopes were checked and actual assignments/pulls must be proved after foundation creation. This is a preview limitation, not claimed runtime authorization proof.
+  - [x] Project build: `npm run build`, `npm run typecheck`; 21 Node protocol/request tests pass. Python 243 unit tests pass; 11 real local HTTP tests separately pass; 64 targeted bootstrap/identity/source/acceptance tests pass. Full npm and isolated locked Python audits report no known vulnerabilities.
+  - [x] Azure Policy: actual CLI assignment read (Azure MCP is unavailable) shows the same three database-protection initiatives, no discovered denial. Provider-level foundation validation succeeds; policy-driven SQL Defender remains in the allowance and cannot be disabled.
+- [ ] Data/app phase provider validation/what-if using actual foundation IDs.
+- [ ] Both built runtime image scans, private MI/source/model acceptance, then public/browser checks.
+
+### Role Assignment Verification
+
+Static review: web/API/setup identities receive resource-scoped AcrPull.
+Only API gets Search Index Data Reader, Document Intelligence Cognitive Services
+User and Cognitive Services OpenAI User. Setup gets Search Service Contributor
+and Index Data Contributor, scoped to this Search service, plus SQL bootstrap
+administration. Runtime SQL uses the separate constrained contained principal,
+not database owner/reader/writer blanket roles. Web has no data-service role.
+No subscription Owner/Contributor grant or tenant permission is generated.
+Local demo uses fixtures/SQLite; no deployer data-role grant is required for it.
+Actual role state, SQL permission assertions and MI pulls remain cloud gates.
+The model requests 20 Standard capacity units within previously observed
+available quota; these are not asserted literal TPM or a spending limit.
+
 ## 8. Implementation and rerun plan
 
 1. Preserve the approved target, Canadian regions and revised Starter cost
@@ -662,19 +810,19 @@ policies require owner approval. Starter never resumes or changes capacity.
 2. Verify user-approved first-party chat removes affected dependency paths;
    preserve actual Python MAF/AG-UI compatibility and no retained chat threads.
    Report any unremediable exposure before cloud publication.
-3. Generate parameterized `azure.yaml`, Bicep, minimal containers/build ignores,
+3. Generate staged Bicep, minimal containers/build ignores,
    bootstrap/seed scripts and cloud adapters. Never include local databases,
    `.env`, `.azure`, token caches or uploaded guide attachments in build contexts.
 4. Preflight sign-in, permissions, tenant settings, licensing, model quota and
    configuration. Provision only approved resources and run authenticated setup.
-   Configure Entra redirects after the actual frontend URL is known.
+   No visitor Entra redirect or user assignment is required for showcase.
 5. Seed versioned synthetic member/plan/claims inputs and generated synthetic
    intake documents in Azure SQL; create/populate the real criteria index and
    separate aggregate snapshot. Populate SQL through migrations, not
    container-local files. OneLake and semantic-model setup is Enterprise-only.
 6. Make reruns adopt known resource/item IDs, apply versioned migrations and
-   content-hash-based seeds, preserve human decisions/audit, and poll Fabric
-   long-running operations. Never wipe a workspace or database on redeploy.
+   content-hash-based seeds and preserve human decisions/audit.
+   Fabric operations are Enterprise-only. Never wipe a workspace or database on redeploy.
 7. Retry bounded permission propagation and throttling using service hints;
    distinguish missing consent, missing role, paused capacity, source gap,
    extraction uncertainty and service outage. No fixture fallback in cloud mode.
@@ -695,7 +843,7 @@ policies require owner approval. Starter never resumes or changes capacity.
 |---|---|
 | Resource deployment | Actual resource IDs/regions and healthy app endpoints; ARM success alone is insufficient |
 | Secretless operation | Local/key auth disabled as supported, MI token acquisition, no secret-bearing configuration/artifacts |
-| User/service trust | Real Entra login; missing/expired/wrong-tenant/wrong-audience tokens rejected; forged persona/service headers rejected |
+| Service trust / anonymous views | Actual app-only MI issuance; absent/expired/wrong-tenant/audience/client/principal rejected. Demo view selection is intentionally public, not a verified user role. Future Entra user login is not showcase acceptance. |
 | Role/employer isolation | Reviewer/contact field boundaries and cross-employer/case denials through backend tools; employer receives only suppressed aggregates |
 | Starter sources and search | Actual MI SQL source read and versioned Search criteria retrieval; source-gap/stale-version behavior; no fixture fallback |
 | Extraction | Actual Document Intelligence analysis of a synthetic document, evidence spans/confidence and explicit human low-confidence verification |
@@ -706,13 +854,10 @@ policies require owner approval. Starter never resumes or changes capacity.
 | Governance | Verified residency, retention/backup settings and sanitized telemetry; Enterprise labels/OneLake/DAX require separate verification and are not Starter claims |
 | Existing behavior | Covering backend/HTTP/browser tests and production build; no regressions in local synthetic workflow |
 
-Local production build/typecheck passed; 95 Python/backend/real-HTTP checks,
-13 request-boundary unit checks and seven browser workflows passed. The optional
-screenshot-only browser check was skipped. No live cloud verification or deployed
-URLs exist for this assignment yet. The Entra validator is a tested
-foundation, not yet wired into runtime authentication or a substitute for the
-remaining SPA/service/store adapters. The existing loopback preview is not a
-cloud deployment.
+The current local evidence is recorded at the top of this plan. No live cloud
+verification or deployed URL exists yet. The signed caller validator is wired
+into cloud runtime paths and tested locally, not proof of actual MI issuance.
+The existing loopback preview is not a cloud deployment.
 
 ## 10. Enterprise-only governance prerequisite and administrator checklist
 

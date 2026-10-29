@@ -20,6 +20,14 @@
 !infra/grant-runtime.sql
 !infra/Dockerfile.web
 !infra/Dockerfile.api
+!tests/
+!tests/test_cloud_adapters.py
+!tests/test_cloud_seed.py
+!tests/test_entra_auth.py
+!tests/test_identity_probe.py
+!tests/test_showcase.py
+!tests/test_cloud_acceptance.py
+!tests/test_cloud_source_probe.py
 **/__pycache__/
 **/*.pyc
 **/.env*
