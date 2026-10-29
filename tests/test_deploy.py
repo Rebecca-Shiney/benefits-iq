@@ -82,6 +82,10 @@ def test_scan_must_be_complete_and_bound_to_the_actual_image():
     assert deploy.scan_findings(value, image) == [finding]
     value["Results"][0] = {"Class": "os-pkgs", "Secrets": [{"RuleID": "synthetic-rule"}]}
     assert deploy.scan_findings(value, image) == [{"RuleID": "synthetic-rule"}]
+    value["Results"][0] = {"Class": "os-pkgs", "Vulnerabilities": [{"Severity": "LOW"}]}
+    assert deploy.scan_findings(value, image) == []
+    value["Results"][1]["Vulnerabilities"] = [{"Severity": "MEDIUM"}]
+    assert deploy.scan_findings(value, image) == [{"Severity": "MEDIUM"}]
 
 
 def test_build_reads_committed_bytes_not_mutable_worktree(monkeypatch):

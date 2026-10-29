@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated: minimal foundation/build-bootstrap phase only. Public synthetic showcase and paid core scope remain approved. Application/data deployment, image and live-acceptance gates remain outstanding; not deployed. Enterprise governance remains gated.**
+**Validated: minimal foundation/build-bootstrap phase only. Foundation resources are created; build/private-proof execution is in progress. No application/data services or public URL are deployed. Enterprise governance remains gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -45,7 +45,8 @@ supersedes the Fabric/Purview prerequisite pause for Starter only. Existing
 paid approval covers the previously approved core Azure services. Do not resume
 `dbtdemo`, create capacity or change any Fabric workspace for Starter.
 Complete remaining prerequisite/quota checks and dependency/authentication
-remediation before public exposure. No deployment has occurred.
+remediation before public exposure. Foundation-only provisioning has occurred;
+application/data services and public exposure remain gated.
 
 Approval excludes shared-capacity changes of any kind for Starter, changes to other workspaces,
 tenant-wide admin consent/settings, permission bypasses and extra paid scope.
@@ -89,14 +90,15 @@ No role/consent/credential/owner grant is added to bypass a refusal. Discovery
 errors or ownership/configuration collisions stop rather than create fallbacks.
 Actual image/receipt association is checked; no substring-only success test.
 
-All four Bicep entry templates compile. Local suite: 243 passed, 11 optional
+All four Bicep entry templates compile. Local suite: 247 passed, 11 optional
 HTTP tests skipped in the full unit run; those 11 then passed separately against
 the existing local preview. Full npm and locked Python audits report no known
 vulnerabilities. Candidate distroless Node24 and Azure Linux3/Python3.12 base
 scans have no High/Critical findings, but **final application images have not
 been built/scanned**. Cloud Python 3.12 compatibility/ODBC and final OS/native/
 bundled-package scans remain mandatory in the remote build before publication.
-No Azure write, resource or deployed application is claimed.
+The owned API audience and Canadian foundation now exist; no application is
+deployed or live-verified. See the execution evidence below.
 
 Azure Monitor/Log Analytics is the actual prepared telemetry surface:
 sanitized console/system events, no HTTP/payload categories, no workspace shared
@@ -767,7 +769,7 @@ policies require owner approval. Starter never resumes or changes capacity.
 
 ## 7. Validation Proof
 
-Evidence date: **2026-10-29 UTC**. No provisioning had occurred at this validation.
+Evidence date: **2026-10-29 UTC**. No provisioning had occurred at the initial validation.
 
 Validation scope is explicitly staged: first only the dedicated Canadian
 foundation and standard managed build/private MI-proof bootstrap. No SQL,
@@ -783,7 +785,7 @@ validation. This does not claim that unavailable local Docker already built them
   - [x] Bicep compilation: foundation/job/data/hosting compile; foundation now explicitly unwraps module outputs into the bootstrap's expected shape.
   - [x] Template validation: `az deployment sub validate --location canadaeast --template-file infra\foundation.bicep --parameters environmentName=benefits-iq environmentId=bb2168f9-5c9d-4961-9960-f4932b863161 --validation-level Provider --subscription 85489118-9695-41ac-ba0f-e14ba8837c91`; Succeeded, error null.
   - [x] What-if: same subscription/template/parameters with `az deployment sub what-if --validation-level Provider --no-pretty-print --result-format ResourceIdOnly`; Succeeded, error null, eight creates, no deletes. Three ACR role-assignment IDs are Unsupported because new identity principal IDs do not yet exist; static roles/scopes were checked and actual assignments/pulls must be proved after foundation creation. This is a preview limitation, not claimed runtime authorization proof.
-  - [x] Project build: `npm run build`, `npm run typecheck`; 21 Node protocol/request tests pass. Python 243 unit tests pass; 11 real local HTTP tests separately pass; 64 targeted bootstrap/identity/source/acceptance tests pass. Full npm and isolated locked Python audits report no known vulnerabilities.
+  - [x] Project build: `npm run build`, `npm run typecheck`; 21 Node protocol/request tests pass. Python 247 unit tests pass; 11 real local HTTP tests separately pass; 68 targeted bootstrap/identity/source/acceptance tests pass. Browser 14 pass, one optional screenshot capture skipped. Full npm and isolated locked Python audits report no known vulnerabilities.
   - [x] Azure Policy: actual CLI assignment read (Azure MCP is unavailable) shows the same three database-protection initiatives, no discovered denial. Provider-level foundation validation succeeds; policy-driven SQL Defender remains in the allowance and cannot be disabled.
 - [ ] Data/app phase provider validation/what-if using actual foundation IDs.
 - [ ] Both built runtime image scans, private MI/source/model acceptance, then public/browser checks.
@@ -801,6 +803,35 @@ Local demo uses fixtures/SQLite; no deployer data-role grant is required for it.
 Actual role state, SQL permission assertions and MI pulls remain cloud gates.
 The model requests 20 Standard capacity units within previously observed
 available quota; these are not asserted literal TPM or a spending limit.
+
+### Foundation execution evidence, 2026-10-29
+
+The approved standard-build exception is recorded above. Actual owned
+single-tenant resource registration/service principal creation and configuration
+succeeded without a user-role assignment, consent grant, credential or owner
+grant. This resolves the owned-registration permission hypothesis, **not** actual
+managed-identity issuance/runtime authorization, which still requires its job.
+
+Subscription deployment `benefits-iq-foundation-bb2168f9` created the dedicated
+`rg-biq-benefits-iq-bb2168f95c9d` environment: three user-assigned identities,
+Basic registry, Log Analytics and Container Apps environment, all Canada East.
+Live `az role assignment list --scope <registry-resource-id>` confirms three
+AcrPull assignments on that registry, matching the three managed identities.
+No shared capacity/workspace or Fabric resource was touched.
+
+ACR run `cw1` was reconciled as Failed after 1m4s, not blindly requeued: the new
+venv's PATH shadowed system Python during pip bootstrapping. The Dockerfile now
+uses `/usr/bin/python3` explicitly for bootstrap. Azure CLI's actual `--no-wait`
+path queued the run but emitted no usable JSON; use supported `--no-logs` polling
+and its completed run response rather than pretending an empty response is
+success. The initial read-only CLI issue was independently fixed: Graph `/me`
+uses the selected subscription/tenant, while global extension commands must not
+receive an unsupported subscription flag.
+
+Final images, private MI/source/model proofs, data services and public/browser
+cloud acceptance remain outstanding. The existing foundation can incur registry/
+telemetry charges while held; it is not automatically deleted. No billable SQL,
+Search, Document Intelligence or OpenAI account has been created.
 
 ## 8. Implementation and rerun plan
 

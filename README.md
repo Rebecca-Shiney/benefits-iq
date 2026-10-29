@@ -19,7 +19,8 @@ standing capacity cost, improve reuse and one-command setup, and retain core
 managed-identity service authentication, constrained demo views, audit and
 explicit human-action controls. Anonymous demo views are not authenticated roles.
 
-**Status: cloud implementation is in progress, not deployed or live-verified.**
+**Status: the Canadian foundation is created; application deployment and live
+integration proof remain incomplete. No public application URL exists.**
 The working loopback demo below is unchanged in scope. `scripts/deploy.py` now
 implements the staged cloud entry point; **its Azure execution is not yet verified**.
 No cloud URL, fabricated

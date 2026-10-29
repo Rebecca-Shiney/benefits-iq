@@ -238,7 +238,9 @@ def scan_findings(report, image):
             or not {"os-pkgs", "lang-pkgs"}.issubset({result.get("Class") for result in report["Results"]})):
         raise DeploymentError("COMPLETE_EXACT_IMAGE_SCAN_REQUIRED")
     return [item for result in report["Results"] for kind in ("Vulnerabilities", "Secrets")
-            for item in result.get(kind, [])]
+            for item in result.get(kind, [])
+            if (kind == "Secrets" or result["Class"] == "lang-pkgs"
+                or item.get("Severity") not in {"LOW", "MEDIUM"})]
 
 
 def build_image(azure, state, component, scanner):
@@ -258,7 +260,7 @@ def build_image(azure, state, component, scanner):
         run = azure.run("acr", "build", "--registry", state["foundation"]["registryName"],
                         "--image", f"benefits-{component}:{identifier}", "--file",
                         str(Path(directory) / "infra" / f"Dockerfile.{component}"), "--platform", "linux/amd64",
-                        "--no-wait", directory, timeout=300)
+                        "--no-logs", directory, timeout=1800)
     run_id = run["runId"]
     deadline = time.monotonic() + 1800
     while True:
@@ -279,7 +281,7 @@ def build_image(azure, state, component, scanner):
     environment = {**os.environ, "AZURE_TENANT_ID": state["tenant"],
                    "AZURE_TOKEN_CREDENTIALS": "AzureCLICredential"}
     report = json_output(command([str(scanner), "image", "--quiet", "--image-src", "remote",
-                                  "--scanners", "vuln,secret", "--severity", "HIGH,CRITICAL",
+                                  "--scanners", "vuln,secret",
                                   "--format", "json", "--cache-dir", str(WORK / "scan-cache"),
                                   "--timeout", "15m", "--skip-version-check", image],
                                  timeout=1000, env=environment))
