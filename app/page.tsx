@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CopilotKitProvider, CopilotChat } from "@copilotkit/react-core/v2";
+import { CaseChat } from "@/components/case-chat";
 import { ActivitySchema, api, type Aggregate, type Case, type CaseOperations, type Field, type Session, type Task, type TaskKind, type Workbench } from "@/lib/contracts";
 import { dateTime, Documents, label, Metrics, Overview, TaskPanel } from "@/components/operations";
 import { authorizationHeaders, initializeAuth, signIn, signOut } from "@/lib/browser-auth";
@@ -43,7 +43,6 @@ export default function Workspace() {
   const [notice, setNotice] = useState("");
   const [showChat, setShowChat] = useState(false);
   const [authProfile, setAuthProfile] = useState<"local" | "starter" | null>(null);
-  const [chatHeaders, setChatHeaders] = useState<Record<string, string>>({});
   const controller = useRef<AbortController | null>(null);
   const decisionKey = useRef<string | null>(null);
   const caseRequest = useRef(0);
@@ -137,14 +136,14 @@ export default function Workspace() {
     catch { setError("Entra sign-out did not finish. Close this tab to discard its in-memory tokens."); }
     finally {
       setSession(null); setCurrent(null); setOperations(null); setWorkbench(null); setAggregate(null);
-      setRenewals([]); setFields({}); setDraft(""); setReason(""); setChatHeaders({}); setRunning(false);
+      setRenewals([]); setFields({}); setDraft(""); setReason(""); setRunning(false);
     }
   }
 
   async function toggleChat() {
     if (showChat) { setShowChat(false); return; }
     try {
-      setChatHeaders(await authorizationHeaders());
+      await authorizationHeaders();
       setShowChat(true);
     } catch { setError("Chat authentication expired or unavailable. Sign in again before retrying."); }
   }
@@ -444,18 +443,7 @@ export default function Workspace() {
         {running && controller.current && <button className="secondary" onClick={() => controller.current?.abort()}>Cancel workflow</button>}
         <p className="small">Interrupted runs are never silently replayed. Refresh the case before retrying; streamed state is provisional.</p>
         {current && session.features.chat && <><button className="secondary" disabled={busy} onClick={toggleChat}>{showChat ? "Close chat" : "Open case-bound chat"}</button>
-          {showChat && <CopilotKitProvider runtimeUrl="/api/copilotkit" useSingleEndpoint={false}
-            headers={{ ...chatHeaders, "X-Benefits-Case": current.id }} showDevConsole={false}
-            onError={(event) => setError(`Chat unavailable: ${event.code}. Refresh before retrying.`)}>
-            <CopilotChat agentId="health_benefits_orchestrator" input={{
-              textArea: { "aria-label": "Case-bound chat message" },
-              sendButton: { "aria-label": "Send message or stop current response" },
-              addMenuButton: { "aria-label": "Attachments unavailable in this demo", disabled: true },
-            }} labels={{
-              welcomeMessageText: "Ask about intake completeness, criteria evidence or case status. Decisions stay in the reviewer panel.",
-              chatDisclaimerText: "Synthetic evidence only. A human must decide.",
-            }} />
-          </CopilotKitProvider>}</>}
+          {showChat && <CaseChat key={`${session.id}-${current.id}`} caseId={current.id} />}</>}
       </aside>
     </div>}</>}
     <footer>BENEFITS IQ <span>Independent October SE Build demo · Synthetic fixtures · No production integrations</span></footer>

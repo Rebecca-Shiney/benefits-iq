@@ -3,7 +3,7 @@
 **Better evidence. Human decisions.** An original, synthetic-data special-
 authorization and Member 360 demonstration for the October SE Build.
 
-Next.js App Router + TypeScript + CopilotKit presentation/runtime connects to a
+Next.js App Router + TypeScript with first-party React chat connects to a
 separate Python Microsoft Agent Framework service through its genuine AG-UI
 adapter. SQLite owns cases, versioned briefs, human decisions, local drafts and
 audit history, operational routing and team tasks. Neither chat nor streamed state
@@ -76,7 +76,52 @@ than introducing a new storage account or capacity dependency.
 | Governed Azure AI Search selected over IQ-branded retrieval | The guide permits a governed search/API alternative; use an explicit, testable service boundary | No claim that Foundry IQ, Work IQ or Web IQ is deployed |
 | Public SPA PKCE and managed-identity connections replace deployed demo credentials | No stored application client secret or browser-selected identity trust | Deployer sign-in, app registration rights and real user authorization still required |
 | Canadian regional legacy model pinned explicitly | Preserve approved Canadian workload processing; avoid silent global inference | Migration must be verified/approved before reported **April 14, 2027** retirement |
-| Streaming JSON limits and compatible dependency updates | Reduce exposed parser risk while preserving installed CopilotKit/AG-UI APIs | body-parser patched from an immutable official release; required transitive Zod 3 remains an exposure blocker |
+| First-party chat/proxy replaces CopilotKit UI/runtime and AG-UI JavaScript client | User-approved removal of vulnerable required Zod 3 paths without an unsafe cross-major override | We maintain the small chat UI/protocol reader; genuine Python MAF/AG-UI remains. CopilotKit can return after compatible patched releases are validated |
+| Bounded request/response parsing | Limit malformed/oversized input and sanitize streamed events independently of UI libraries | Limits, cancellation and protocol compatibility remain application responsibilities |
+
+### Chat replacement and adding CopilotKit back
+
+The user approved this contained replacement after the installed CopilotKit/
+AG-UI JavaScript dependency paths could not be remediated compatibly. Those
+packages and their unused local-demo paths are **removed**, not hidden behind a
+feature flag. The deployable tree retains direct patched Zod `4.6.7`, with no
+Zod 3 or forced cross-major alias.
+
+The operational dashboard was **not rebuilt or reduced**: queue/search/filter/
+sort, KPIs, ownership/priority/aging, documents, form verification, evidence,
+tasks, renewals, employer aggregates, human decisions and audit remain on the
+same React/backend paths. Only the optional conversational panel changed.
+`components/case-chat.tsx` provides plain, escaped text messages, keyboard-accessible
+controls, live status/error announcements, explicit cancel/retry/clear, incomplete
+reply labels and in-memory context. Closing chat, changing case/persona or
+reloading clears it. No transcript/list/resume endpoint or automatic retry exists.
+Attachments, arbitrary frontend actions and autonomous decisions are not added.
+
+`app/api/chat/route.ts` independently authenticates the user, checks the selected
+case through the backend, then forwards a server-built request to the genuine
+Python `/ag-ui` or `/ag-ui-live` endpoint. Starter keeps separate user/runtime
+Entra validation and managed-identity service calling. `lib/chat-protocol.ts`
+validates lifecycle ordering/case/run IDs and allowlisted read-only tool names.
+It forwards text and sanitized lifecycle events, never tool arguments/results,
+raw/custom events or state snapshots. Requests are bounded to 24,000 bytes;
+responses to 256 KiB, 2,048 events and 16,000 text characters, with bounded frames,
+tool/message counts and a three-minute server deadline. Disconnected runs are
+not silently resumed; partial text is never marked complete.
+
+The tradeoff is that we maintain composer/history rendering, stream parsing,
+limits, keyboard/focus behavior, cancellation, errors/retries and protocol tests
+instead of receiving those conveniences from CopilotKit. Conversation text is
+plain React text, not model-generated HTML or Markdown rendering.
+
+**CopilotKit can be added back once a compatible patched upstream stack is
+available and validated; no release date is promised.** Reinstatement requires:
+compatible supported CopilotKit/AG-UI JavaScript versions with no affected
+transitive Zod path; a fresh locked install/full and production audit; verified
+installed API/protocol compatibility; equivalent independent authentication,
+case/role isolation, bounded/sanitized streams and cancellation; no default
+server transcript retention/list/resume; and passing type/build, real HTTP,
+keyboard/accessibility and browser workflows. Replacing the two small chat
+surfaces must not move human decisions into chat or alter operational APIs.
 
 ### Implemented preparation versus deployment
 
@@ -200,37 +245,20 @@ children when interrupted. Do not expose this identity-switching demo publicly.
 If ports are in use, specify `--web-port 3020 --api-port 8020`. No source attachment
 is needed at runtime.
 
-**Dependency gate:** the latest production scan reports **20 high affected
-package entries, one underlying advisory**:
-[GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
-Required transitive Zod 3 is affected; the advisory lists `<4.6.6` as vulnerable
-and `4.6.6` as patched. The direct Zod 4 dependency is patched, but that does not
-repair SDK-owned Zod 3 paths. Checked stable AG-UI `1.0.3` still requires
-`zod:^3.25.76`; CopilotKit `1.79.1` also retains transitive Zod 3. CopilotKit
-`2.0.0-next.1` is an older prerelease with Zod 3, not a supported remediation.
+**Dependency status:** after the user-approved first-party chat replacement,
+both full and production npm audits report **zero known vulnerabilities**.
+The installed tree has no CopilotKit, AG-UI JavaScript client or transitive Zod 3.
+This removes the previously blocked
+[GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)
+path rather than pretending request guards fix it. The former body-parser
+dependency and its GitHub tarball override are also no longer required.
+Other now-unused runtime overrides were removed. The lockfile remains committed.
 
-The body-parser advisory
-[GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828)
-is resolved by pinning official `2.4.0` release commit
-[`b4744d7`](https://github.com/expressjs/body-parser/commit/b4744d739e1e2e5257f2ddac31eed191aa5152a4)
-as an immutable GitHub source tarball with lockfile integrity. The npm registry
-returned 404 for `2.4.0` when checked; the official release source, not a local
-patch or unverified fork, supplies the fix. Installation requires access to
-GitHub codeload as well as npm.
-
-**The user selected keeping CopilotKit mandatory and waiting for compatible
-upstream fixes.** Do not remove it, globally force Zod 3 to an incompatible major
-or treat the Zod 4 `/v3` compatibility path as a demonstrated fix. JSON boundaries
-reject compression and bound streamed bytes/input shape before SDK parsing;
-these are defense in depth, not remediation of the remaining installed advisory.
-Public exposure and paid provisioning of an unusable blocked deployment remain
-on hold. No automatic release monitoring is configured.
-
-Reopen deployment only after compatible releases eliminate the required
-vulnerable paths (or a separately approved architecture change), followed by a
-fresh locked install/audit and API/type/build/HTTP/browser checks. Then finish
-infrastructure/bootstrap, run `azure-validate` before `azure-deploy`, and prove
-actual cloud behavior. A successful ARM deployment alone is insufficient.
+An audit is a point-in-time known-advisory check, not a security certification or
+cloud verification. No scheduled upstream monitoring is configured. Complete
+infrastructure/bootstrap and remaining authorization/permission checks, then
+run `azure-validate` before `azure-deploy`; a successful ARM deployment alone
+still does not prove a working accelerator.
 
 For a production-mode *local* preview, first run `npm run build`, then:
 
@@ -269,7 +297,7 @@ capability layer independently checks role and employer/case access.
    `SYN-CASE-004` (renewal within 30 days) and `SYN-CASE-005` (stale criteria).
 8. Open case-bound chat. Ask "Check evidence", "Check intake completeness" or
    "Current status". Text and sanitized read-only tool lifecycles stream through
-   CopilotKit -> Python's real MAF/AG-UI bridge. Synthetic mode is deterministic,
+   first-party authenticated proxy -> Python's real MAF/AG-UI bridge. Synthetic mode is deterministic,
    clearly labeled, and never claims a model was called.
 9. In **Overview**, save a reviewer owner or operational priority. Only the same
    employer's review team is allowed. Record versions and audit events advance;
@@ -384,7 +412,7 @@ server-side, never under `NEXT_PUBLIC_`. The convenience launcher is preferred.
 ```powershell
 .\.venv\Scripts\python -m pytest -q
 npm run typecheck
-node --test tests\request-policy.test.mjs
+node --test tests\request-policy.test.mjs tests\chat-protocol.test.mjs
 npm run build
 npm audit --omit=dev
 ```
@@ -429,8 +457,8 @@ Frontend exact versions are in `package.json`/`package-lock.json`; Python direct
 pins are in `requirements.txt` and the full tested resolution is in
 `requirements.lock.txt`. Package APIs were checked against installed signatures:
 MAF uses `Agent`, `BaseAgent`, `ResponseStream`, `AgentFrameworkAgent` and
-`add_agent_framework_fastapi_endpoint`. CopilotKit's runtime/provider exports are
-checked by TypeScript/build, not copied blindly from the implementation guide.
+`add_agent_framework_fastapi_endpoint`. First-party protocol validation is checked
+against the installed Python bridge through real proxy/HTTP/browser workflows.
 
 ## Boundaries and operational notes
 
@@ -500,8 +528,8 @@ renewal authorization in the seed is not represented as a new agent decision.
 3. **Controlled UI:** Known components and versioned activities, no generated HTML,
    and a human decision panel outside chat. Evidence states are never outcomes.
 4. **No conversational persistence:** Avoid unsupported retention and identity
-   assumptions. A stateless runtime runner avoids CopilotKit's default
-   process-global thread history, including cross-session list/resume surfaces.
+   assumptions. First-party chat has no server transcript store or thread
+   list/resume surface, and discards incomplete turns from model context.
    Source attachments are neither modified nor committed.
 5. **No residency claim:** A local demo proves no cloud region, networking,
    carrier compliance or production deployment guarantee.
@@ -510,9 +538,9 @@ renewal authorization in the seed is not represented as a new agent decision.
 
 - Microsoft Agent Framework AG-UI:
   https://learn.microsoft.com/en-us/agent-framework/integrations/by-component/ui/ag-ui/
-- CopilotKit / Microsoft Agent Framework:
+- CopilotKit / Microsoft Agent Framework (optional future reinstatement reference):
   https://docs.copilotkit.ai/microsoft-agent-framework
-- CopilotKit runtime: https://docs.copilotkit.ai/backend/copilot-runtime
+- CopilotKit runtime (not installed): https://docs.copilotkit.ai/backend/copilot-runtime
 - AG-UI protocol: https://docs.ag-ui.com/introduction
 
 Implemented independently from the approved guide's requirements. No code was

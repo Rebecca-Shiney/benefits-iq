@@ -2,7 +2,18 @@
 
 ## Status and approval boundary
 
-**Approved: synthetic-only Azure-native Starter. Preparation in progress; not ready for validation or deployment. Mandatory CopilotKit upstream dependency gate blocks public exposure and wasteful paid provisioning. Enterprise governance remains gated.**
+**Approved: synthetic-only Azure-native Starter and first-party chat replacement. Preparation in progress; not ready for validation or deployment. Enterprise governance remains gated.**
+
+The user explicitly approved replacing the affected CopilotKit UI/runtime and
+AG-UI JavaScript client with a first-party accessible chat and authenticated
+bounded streaming proxy to the genuine Python MAF/AG-UI service. This supersedes
+the prior mandatory-CopilotKit wait decision. Preserve all existing operational
+dashboard behavior and backend trust boundaries. Remove affected installed
+paths rather than retaining them as an unused local option. CopilotKit may be
+reintroduced after a compatible patched upstream stack and renewed dependency,
+protocol, authorization, privacy, accessibility and build/browser validation.
+No release date is promised. Continue cloud preparation only after checks pass;
+this amendment itself is not evidence that the dependency gate is resolved.
 
 The user approved implementation and paid deployment, including resuming
 `dbtdemo` F2 and creating required Entra registrations and least-privilege
@@ -116,9 +127,9 @@ literally no credential exists anywhere.
   30 high, 6 moderate, 6 low, 0 critical. Some transitive paths lack a
   straightforward fix. Remediation, compatibility checks and a new scan
   are required before public exposure; authentication is not a waiver.
-- This was the initial audit. Compatible updates and targeted overrides first
-  reduced it to 25 high affected entries/two roots. The current production audit
-  is **20 high affected package entries, one root**, transitive Zod 3 constrained
+- Historical pre-replacement audit: compatible updates and targeted overrides
+  first reduced it to 25 high affected entries/two roots, then
+  **20 high affected package entries, one root**, transitive Zod 3 constrained
   collections (`GHSA-mrhx-c7xc-m3w5`, affected `<4.6.6`, patched `4.6.6`).
   body-parser `GHSA-27r3-jxmh-p828` is now resolved using its official immutable
   `2.4.0` release tarball, commit
@@ -126,17 +137,28 @@ literally no credential exists anywhere.
   when checked. Lockfile integrity is retained. No clean-audit claim is made.
   Stable AG-UI `1.0.3` still requires `zod:^3.25.76`; CopilotKit `1.79.1`
   retains affected paths. `2.0.0-next.1` is an older prerelease, not a fix.
-  The user selected **keep CopilotKit mandatory; wait for compatible upstream
-  fixes**. No forced major override, SDK replacement, exposure waiver or
-  scheduled monitoring is authorized. Hold paid provisioning where an unusable
-  deployment would waste charges. Reopen after compatible releases eliminate
-  required vulnerable paths or a separately approved architecture change,
-  fresh locked install/audit and API/type/build/HTTP/browser compatibility
-  checks, then complete preparation and validate before deploying.
+  The earlier mandatory-CopilotKit wait decision was superseded by explicit
+  user approval of the first-party replacement recorded above. No unsafe
+  cross-major override or exposure waiver was used.
   The Next.js JSON boundaries now reject compression, enforce a streamed
   32,000-byte limit independent of Content-Length, bound collection/depth/node
   shape before SDK parsing, and use a smaller demo-session limit. These are
   defense-in-depth controls, not evidence that the advisories are fixed.
+- Current post-replacement full and production npm audit: **zero known
+  vulnerabilities**. Removed 828 packages, including all installed CopilotKit/
+  AG-UI JavaScript/Zod 3 paths, and obsolete runtime overrides. Python MAF/AG-UI
+  remains. `components/case-chat.tsx`, `app/api/chat/route.ts` and
+  `lib/chat-protocol.ts` replace only the conversational surfaces. Operational
+  dashboard APIs/components and human decision controls are preserved.
+  Proxy requests reject browser state/tools/system roles; only sanitized
+  allowlisted lifecycle/text events are forwarded. Chat is in memory only,
+  case-bound, bounded and manually retryable; partial replies remain incomplete.
+  The dependency gate can clear after targeted replacement verification, but
+  missing deployment artifacts/permissions/live checks still block readiness.
+  CopilotKit may return only with compatible patched supported dependencies,
+  fresh locked install/audit, installed API validation and equivalent
+  authentication/isolation/privacy/cancel/accessibility/build/browser tests.
+  No promised release date or scheduled monitoring.
 
 ### Local preparation milestone, not cloud evidence
 
@@ -159,7 +181,7 @@ container build configuration, Entra/SQL permission bootstrap, synthetic source/
 PDF/index seeding, deployment/rerun diagnostics and live verification are still
 unfinished. SQL startup currently requires an initialized schema; setup must
 run before application startup, not rely on the runtime to create tables.
-Keep this plan out of Ready for Validation until these and the dependency gate
+Keep this plan out of Ready for Validation until these and replacement validation
 are resolved. No app registration/resource/role assignment has been created.
 - The user subsequently approved **planning reuse** of existing `dbtdemo` F2.
   ARM confirms it belongs to the selected subscription, resource group
@@ -280,7 +302,7 @@ has been performed; checks to date were read-only management/public-doc queries.
 
 | Component | Existing location | Cloud change required |
 |---|---|---|
-| Next.js App Router, CopilotKit runtime | `app`, `components`, `lib` | Container hosting; Entra SPA login/token validation; secretless backend caller |
+| Next.js App Router, first-party chat/proxy | `app`, `components`, `lib` | Container hosting; Entra SPA login/token validation; secretless backend caller |
 | Python MAF/AG-UI and governed APIs | `service` | Internal hosting; independent caller/user checks; real cloud adapters |
 | Transactional workflow store | `service/store.py` | Entra-only SQL adapter preserving atomic decisions, idempotency and audit |
 | Versioned definitions and synthetic sources | `agents`, `skills`, `service/catalog.py`, `service/fixtures.py` | Starter SQL source/document/aggregate seed and criteria index; Enterprise-only OneLake/model integration |
@@ -499,8 +521,8 @@ policies require owner approval. Starter never resumes or changes capacity.
 1. Preserve the approved target, Canadian regions and revised Starter cost
    allowance. Complete remaining quotas, policies and scoped Entra/data access
    checks. Fabric/Purview prerequisites below do not gate Starter.
-2. Remediate exposed dependency paths without blind major downgrades; preserve
-   installed CopilotKit/AG-UI/MAF API compatibility and stateless thread isolation.
+2. Verify user-approved first-party chat removes affected dependency paths;
+   preserve actual Python MAF/AG-UI compatibility and no retained chat threads.
    Report any unremediable exposure before cloud publication.
 3. Generate parameterized `azure.yaml`, Bicep, minimal containers/build ignores,
    bootstrap/seed scripts and cloud adapters. Never include local databases,
@@ -539,7 +561,7 @@ policies require owner approval. Starter never resumes or changes capacity.
 | Role/employer isolation | Reviewer/contact field boundaries and cross-employer/case denials through backend tools; employer receives only suppressed aggregates |
 | Starter sources and search | Actual MI SQL source read and versioned Search criteria retrieval; source-gap/stale-version behavior; no fixture fallback |
 | Extraction | Actual Document Intelligence analysis of a synthetic document, evidence spans/confidence and explicit human low-confidence verification |
-| Model/AG-UI | Actual Azure model stream through MAF and CopilotKit; sanitized lifecycle/tool/domain events, cancellation, errors and reconnect isolation |
+| Model/AG-UI | Actual Azure model stream through MAF and first-party authenticated proxy; sanitized lifecycle/tool/domain events, cancellation, errors and reconnect isolation |
 | Human workflow | Explicit authorized decision, optimistic conflicts/idempotency and durable audit survive app revision/restart |
 | Starter employer aggregates | Actual authorized SQL aggregate result, minimum-cell suppression, no detail-record access; no semantic-model claim |
 | Rerun/recovery | Second setup does not duplicate seeds or overwrite human history; missing prerequisite and partial-service failure are actionable |

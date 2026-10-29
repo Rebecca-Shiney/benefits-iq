@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "@copilotkit/react-ui/styles.css";
 import "./dashboard.css";
 
 export const metadata: Metadata = {

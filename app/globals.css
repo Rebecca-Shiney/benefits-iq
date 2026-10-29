@@ -364,10 +364,22 @@ h1 span {
 .assistant button {
   font-size: 12px;
 }
-.assistant .copilotKitChat {
-  height: 480px;
+.case-chat {
   margin-top: 16px;
 }
+.chat-history {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+}
+.chat-history article + article { border-top: 1px solid var(--line); margin-top: 12px; }
+.chat-history h3 { font-size: 12px; margin: 12px 0 4px; }
+.chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.case-chat textarea { width: 100%; min-height: 90px; resize: vertical; }
+.chat-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.case-chat :focus-visible { outline: 3px solid #176a49; outline-offset: 3px; }
 .timeline {
   list-style: none;
   padding: 0;
