@@ -74,3 +74,34 @@ def test_real_runtime_has_no_cross_session_thread_history(web):
     login(web, "reviewer-b")
     response = web.get("/api/copilotkit/threads", headers={"X-Benefits-Case": "SYN-CASE-004"})
     assert "http-test-thread" not in response.text
+
+
+def test_real_session_json_boundary(web):
+    assert web.post("/api/session", content="{",
+                    headers={"Content-Type": "application/json"}).status_code == 400
+    assert web.post("/api/session", content="{}",
+                    headers={"Content-Type": "application/json", "Content-Encoding": "gzip"}).status_code == 415
+    assert web.post("/api/session", json={"user": "a" * 1024}).status_code == 413
+
+
+def test_real_authenticated_routes_reject_compression_and_oversized_shapes(web):
+    login(web)
+    paths = ["/api/backend/cases/SYN-CASE-001/form",
+             "/api/copilotkit/agent/health_benefits_orchestrator/run"]
+    for path in paths:
+        headers = {"X-Benefits-Case": "SYN-CASE-001", "Content-Encoding": "gzip"}
+        response = web.post(path, headers=headers, json={})
+        assert response.status_code == 415, response.text
+        response = web.post(path, headers={"X-Benefits-Case": "SYN-CASE-001"},
+                            json={"messages": [0] * 129})
+        assert response.status_code == 422, response.text
+        assert response.json()["error"]["code"] == "REQUEST_SHAPE_LIMIT"
+
+
+def test_real_proxy_bounds_unknown_length_body_before_buffering(web):
+    login(web)
+    body = json.dumps({"value": "a" * 34_000}).encode()
+    response = web.post("/api/backend/cases/SYN-CASE-001/form",
+                        headers={"Content-Type": "application/json"},
+                        content=iter([body[:20_000], body[20_000:]]))
+    assert response.status_code == 413, response.text

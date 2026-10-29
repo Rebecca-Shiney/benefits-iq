@@ -9,6 +9,151 @@ adapter. SQLite owns cases, versioned briefs, human decisions, local drafts and
 audit history, operational routing and team tasks. Neither chat nor streamed state
 can record a clinical decision.
 
+## Accelerator profiles and current status
+
+The approved accelerator now has a **synthetic-only Azure-native Starter**
+default and a separate **opt-in Enterprise integration** profile. This is a
+deliberate change from the original guide: reduce tenant-admin onboarding and
+standing capacity cost, improve reuse and one-command setup, and retain core
+authentication, authorization, privacy, audit and human-decision controls.
+
+**Status: cloud implementation is in progress, not deployed or live-verified.**
+The working loopback demo below is unchanged in scope. `azd up` is the intended
+cloud entry point, **not yet a working quickstart on this branch**: infrastructure,
+bootstrap and runtime adapters are still being prepared. No cloud URL, fabricated
+integration success or healthcare-compliance claim is supplied.
+
+| Profile | Intended scope | Current implementation status |
+|---|---|---|
+| Local demo | Credential-free synthetic workflow, SQLite, deterministic MAF/AG-UI and explicit demo personas | Working local application; not Entra or cloud services |
+| Starter (default cloud) | Real Next.js/Python services, regional inference, governed Search, OCR and durable Azure SQL with managed identities | In preparation; Entra validator/request-boundary foundations added, complete cloud runtime/deployment not yet implemented |
+| Enterprise (opt-in) | Actual Fabric/OneLake, aggregate-only employer semantic model, Purview and customer-specific policies | Planned integration profile only; not connected or verified |
+
+### Starter quickstart contract and minimal inputs
+
+Keep using the local quickstart below until the cloud entry point is implemented
+and validated. The intended Starter sequence is one-time interactive Azure/azd
+sign-in, confirmed subscription/Canadian region, then `azd up` from the repository
+root. Bootstrap must discover prerequisites with explicit errors, generate and
+connect the resources, initialize schema, seed only synthetic records/documents,
+populate Search and verify readiness. No hidden hand-seeding or source attachment
+is required. An ARM deployment alone will not count as a working accelerator.
+
+Minimum non-secret inputs are subscription, Canadian resource regions and
+approved Entra object-ID-to-role/employer bindings. Discover tenant/deployer
+context; generate resource/application IDs and configure redirects from the actual
+frontend URL rather than asking users to type every endpoint. Initial access is
+explicit and default-deny. One-time deployer sign-in, permission to create
+registrations and scoped role assignments, and applicable tenant consent policy
+cannot be bypassed by a deployment button. Missing permission must stop setup with
+an actionable error, not switch to demo identity or claim that a service is absent.
+
+| What Starter will create/connect | Placement / connection |
+|---|---|
+| Next.js frontend/runtime, internal Python API and setup job | Canada East Container Apps; frontend validates Entra user, backend independently checks user and managed-identity caller |
+| ACR and separate managed identities | Canada East; admin/key credentials disabled, identity-based image pulls and data access |
+| Entra-only Azure SQL | Canada East; authoritative cases/tasks/briefs/decisions/audit plus versioned synthetic source rows, binary intake documents and separate aggregate snapshots |
+| Azure AI Search Basic | Canada East; versioned governed criteria populated from synthetic SQL sources, backend-enforced query scope |
+| Azure OpenAI model | Canada East regional **Standard**, `gpt-4.1-mini`, version `2025-04-14`; no Global/DataZone fallback |
+| Document Intelligence S0 | Canada Central; actual binary document analysis, confidence and source evidence |
+| Server-only Azure Monitor/Application Insights | Canada East; sanitized operational metadata, no browser/health-payload tracing |
+
+Starter **does not** create/resume Fabric capacity, alter existing workspaces,
+request Purview Graph permissions, apply labels, create a Fabric semantic model,
+send external communications or connect production carrier systems. In particular,
+it must not resume or modify the shared `dbtdemo` F2. Its employer view will query
+separate SQL aggregate snapshots with suppression, not pretend to run DAX or
+OneLake. SQL synthetic source storage uses the already planned service rather
+than introducing a new storage account or capacity dependency.
+
+### What changed from the guide, and why
+
+| Changed | Reason | Tradeoff / deferred feature |
+|---|---|---|
+| Azure-native synthetic SQL sources in Starter instead of mandatory Fabric/OneLake | Reuse planned durable SQL; reduce capacity cost, license/admin setup and onboarding questions | No OneLake/DirectLake integration in Starter; actual Fabric belongs to opt-in Enterprise |
+| SQL aggregate snapshots instead of a mandatory employer semantic model | Preserve scoped/suppressed portfolio output without a Fabric dependency | Seeded synthetic snapshot, not a live operational feed or semantic model |
+| Purview labels/customer governance move to Enterprise prerequisites | Avoid requiring label discovery/admin permissions for a strictly synthetic demo | No Purview labeling or enterprise-governance/compliance claim in Starter |
+| Governed Azure AI Search selected over IQ-branded retrieval | The guide permits a governed search/API alternative; use an explicit, testable service boundary | No claim that Foundry IQ, Work IQ or Web IQ is deployed |
+| Public SPA PKCE and managed-identity connections replace deployed demo credentials | No stored application client secret or browser-selected identity trust | Deployer sign-in, app registration rights and real user authorization still required |
+| Canadian regional legacy model pinned explicitly | Preserve approved Canadian workload processing; avoid silent global inference | Migration must be verified/approved before reported **April 14, 2027** retirement |
+| Streaming JSON limits and compatible dependency updates | Reduce exposed parser risk while preserving installed CopilotKit/AG-UI APIs | Two underlying dependency advisories still require resolution/exposure assessment before publication |
+
+### Security guarantees versus non-guarantees
+
+Both cloud profiles must retain backend-enforced role/employer/case isolation,
+explicit authorized human clinical decisions, durable audit, optimistic version
+checks/idempotency and aggregate suppression. Managed identities, Entra data-plane
+permissions and short-lived tokens replace application keys/client secrets. No
+application secrets belong in `.env`, azd state, repo, images, logs or Key Vault as
+a workaround. Non-secret endpoints, public client IDs and approved object-ID
+bindings are configuration.
+
+This does **not** mean no credential ever exists: interactive deployer sign-in and
+short-lived CLI/azd token caches are unavoidable and distinct from persisted
+application credentials. SPA tokens should use memory caching; never expose
+service credentials to the browser. Deployed mode must disable demo persona
+authentication and must not silently fall back to SQLite or fixtures.
+
+Starter is **synthetic data only**. Do not enter real member/provider/employer or
+health information. It is not a healthcare-compliant production system, certified
+control framework, private-network-only architecture or substitute for customer
+security/governance review. Entra's non-regional identity/control-plane boundary
+is the narrow user-approved exception; it does not permit non-Canadian workload
+data processing or global model inference.
+
+### Opt-in Enterprise prerequisites
+
+Enterprise integrations are planned, not a working switch. Before implementing
+or provisioning them, verify capacity reuse consent/headroom and Canadian
+placement, Fabric licensing and workspace/OneLake permissions, applicable
+service-principal tenant settings, semantic-model creation/query permissions and
+customer policies. Discovery failure is not proof of no suitable capacity.
+Discover suitable capacities and ask to reuse first; offer a new F2 only when none
+is suitable/approved and after the normal cost/provisioning approval.
+
+An administrator must supply approved label GUID/display name(s), active/published
+status and applicability to Lakehouse/SemanticModel, licensing and applying
+principal rights, encryption/export restrictions, and handling/access/retention
+policy. Apply labels with `ApplyOrFail` and read back the item label; a GUID alone
+does not prove application rights. Graph label discovery currently returns
+403 `InsufficientGraphPermissions`; no extra consent/settings were granted.
+This is **not a Starter prerequisite**. Azure tags are not Purview labels.
+
+### Cost, upgrades and cleanup
+
+The revised Starter planning allowance is approximately **US$155-US$515/month**:
+Search $80-$120, SQL/storage $20-$220, apps/setup/build/registry $20-$90,
+model/OCR/telemetry/source operations $20-$70, and a separate policy-driven SQL
+Defender planning line of $15. These are allowances, **not a quote or cap**;
+tax, agreements, licenses, load and private networking can change the total.
+SQL probes/connections can prevent auto-pause. Alerts are not hard spending caps.
+Model capacity discovery does not reserve inference capacity.
+
+Starter removes the prior $300-$500/month continuous-F2 compute allowance;
+it creates no Fabric running charge. Enterprise's historical combined
+$455-$1,015/month illustration is not a verified F2 quote and does not authorize
+Starter to touch capacity. Shared storage/unrelated workloads are outside these
+accelerator estimates. Exact final meters remain to be confirmed.
+
+For reproducible local upgrades, commit dependency manifests/lockfiles, run
+`npm ci` and `pip install -r requirements.lock.txt`, then the validation commands
+below. Stop a running production preview before replacing its `.next` output.
+Cloud upgrades must use versioned migrations and content-hash seeds, preserve
+human decisions/audit, retain resource IDs and pass rerun/live checks; no such
+cloud upgrade is claimed verified yet.
+
+Cloud cleanup must target only the dedicated accelerator resource group and
+recorded app registrations/assignments after explicit destructive-action approval.
+Review the resource list and exported/retained synthetic audit requirements first.
+No cleanup command is supplied until the actual deployment/ownership inventory
+exists. Never delete/resize/resume/pause shared capacity or alter other workspaces,
+and never run a broad directory/resource cleanup. Local resets use a new DB path,
+not destructive database replacement.
+
+The detailed approval, architecture, current evidence and deployment gates are in
+[`.azure/deployment-plan.md`](.azure/deployment-plan.md). That plan is not a cloud
+deployment report.
+
 ## Run locally (no cloud account or model key needed)
 
 Requirements: Python 3.11+ and Node.js 22+; tested using Python 3.11 and Node 24.
@@ -28,14 +173,15 @@ children when interrupted. Do not expose this identity-switching demo publicly.
 If ports are in use, specify `--web-port 3020 --api-port 8020`. No source attachment
 is needed at runtime.
 
-**Dependency caveat:** the recorded npm production-dependency scan has no
-critical findings after updating Next.js, but still reports 28 high, 5 moderate
-and 6 low findings through CopilotKit's transitive dependency graph (39 total).
-Some patched versions are unavailable in the configured registry or would require
-incompatible major overrides. Do not expose this demo publicly or treat it as
-production-ready; re-scan and remediate with upstream-compatible releases before
-deployment. Compatible `npm audit fix` was attempted; no forced downgrades or
-unsafe cross-major overrides were applied.
+**Dependency caveat:** the latest production-dependency scan reports **25 high
+affected package entries**, tracing to two underlying advisories:
+`GHSA-27r3-jxmh-p828` (body-parser compressed trailing bytes) and
+`GHSA-mrhx-c7xc-m3w5` (transitive Zod 3 constrained collections).
+Compatible updates resolved other advisory paths; no forced major downgrade or
+blind Zod 3-to-4 replacement was applied. JSON boundaries reject compression and
+bound streamed bytes and input shape before SDK parsing. These are defense in
+depth, not a claim that the installed advisories are fixed. **Public exposure
+remains gated** pending compatible remediation and exposure validation.
 
 For a production-mode *local* preview, first run `npm run build`, then:
 
@@ -157,10 +303,13 @@ chat, not a fake endpoint pretending to be a model.
 An incomplete intake uses `intake_incomplete`, never a clinical
 `information_requested` outcome. Only an explicit human decision records the latter.
 
-## Optional genuine model-backed chat
+## Legacy optional local model-backed chat (not Starter authentication)
 
 Only enable this intentionally: model requests may incur charges and transmit
 synthetic conversation text to your configured OpenAI service.
+This API-key-based local compatibility path is **not** the secretless accelerator,
+must not be deployed as a fallback, and has not been approved as a non-Canadian
+processing path. Do not run it against an unapproved provider/geography.
 
 ```powershell
 $env:OPENAI_API_KEY = "<your local secret>"
@@ -186,6 +335,7 @@ server-side, never under `NEXT_PUBLIC_`. The convenience launcher is preferred.
 ```powershell
 .\.venv\Scripts\python -m pytest -q
 npm run typecheck
+node --test tests\request-policy.test.mjs
 npm run build
 npm audit --omit=dev
 ```
@@ -198,7 +348,7 @@ $env:BENEFITS_TEST_URL = "http://127.0.0.1:3000"
 .\.venv\Scripts\python -m pytest -q tests\test_http_demo.py
 ```
 
-These six HTTP checks are skipped when the URL is unset; the backend suite does
+These nine HTTP checks are skipped when the URL is unset; the backend suite does
 not pretend that an in-process test proves a working Next.js runtime.
 
 For repeatable browser acceptance checks against the running demo:
@@ -255,7 +405,9 @@ checked by TypeScript/build, not copied blindly from the implementation guide.
   arguments/results in the workflow stream, no browser payload logging, no health
   payloads in operational logs. Access logging and OTel are disabled by launcher.
 - **Limits:** 120 authenticated calls/minute/identity, bounded conversations,
-  32 KB application proxy requests and 60-second workflow proxy timeout. The
+  32,000-byte streamed JSON requests, 1,024-byte demo-session requests,
+  compression rejection, a 10-second body-read timeout, bounded JSON collections,
+  depth/nodes and 60-second workflow proxy timeout. The
   loopback demo is not an internet-hardened ingress.
 - **Feature gates:** Set `BENEFITS_ENABLE_CHAT`, `BENEFITS_ENABLE_INTAKE`,
   `BENEFITS_ENABLE_EVIDENCE`, `BENEFITS_ENABLE_RENEWAL`,

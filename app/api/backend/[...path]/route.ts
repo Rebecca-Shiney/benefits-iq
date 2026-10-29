@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError } from "@/lib/server";
+import { readBoundedJson } from "@/lib/request-policy";
 
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   if (!sameOrigin(request)) return safeError("ORIGIN_DENIED", 403);
@@ -7,13 +8,11 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   if (!user) return safeError("DEMO_SESSION_REQUIRED", 401);
   const { path } = await context.params;
   if (!path.every((p) => /^[a-zA-Z0-9_-]+$/.test(p))) return safeError("INVALID_PATH", 422);
-  const length = Number(request.headers.get("content-length") || 0);
-  if (length > 32_000) return safeError("REQUEST_LIMIT", 413);
+  const input = await readBoundedJson(request);
+  if (input instanceof Response) return input;
   try {
-    const body = request.method === "POST" ? await request.text() : undefined;
-    if (body && body.length > 32_000) return safeError("REQUEST_LIMIT", 413);
     const response = await fetch(`${serviceUrl()}/api/${path.join("/")}${request.nextUrl.search}`, {
-      method: request.method, headers: serviceHeaders(user), body,
+      method: request.method, headers: serviceHeaders(user), body: input.text,
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(60_000)]), cache: "no-store",
     });
     return new Response(response.body, {

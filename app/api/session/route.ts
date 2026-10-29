@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { demoUsers, sameOrigin, signSession, safeError } from "@/lib/server";
+import { readBoundedJson } from "@/lib/request-policy";
 
 export async function POST(request: NextRequest) {
   if (!sameOrigin(request)) return safeError("ORIGIN_DENIED", 403);
-  const body: unknown = await request.json();
+  const input = await readBoundedJson(request, 1024);
+  if (input instanceof Response) return input;
+  const body = input.value;
   if (!body || typeof body !== "object" || !("user" in body) || typeof body.user !== "string" || !demoUsers.includes(body.user)) {
     return safeError("UNKNOWN_DEMO_IDENTITY", 422);
   }

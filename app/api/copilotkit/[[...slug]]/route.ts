@@ -3,6 +3,7 @@ import { CopilotRuntime, createCopilotRuntimeHandler } from "@copilotkit/runtime
 import { HttpAgent } from "@ag-ui/client";
 import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError } from "@/lib/server";
 import { StatelessRunner } from "@/lib/stateless-runner";
+import { readBoundedJson } from "@/lib/request-policy";
 
 async function handle(request: NextRequest) {
   if (!sameOrigin(request)) return safeError("ORIGIN_DENIED", 403);
@@ -10,6 +11,8 @@ async function handle(request: NextRequest) {
   if (!user) return safeError("DEMO_SESSION_REQUIRED", 401);
   const caseId = request.headers.get("x-benefits-case") || "";
   if (!/^SYN-CASE-\d{3}$/.test(caseId)) return safeError("CASE_REQUIRED", 422);
+  const input = await readBoundedJson(request);
+  if (input instanceof Response) return input;
   try {
     const auth = await fetch(`${serviceUrl()}/api/cases/${caseId}`, {
       headers: serviceHeaders(user), cache: "no-store", signal: AbortSignal.timeout(5000),
@@ -27,7 +30,9 @@ async function handle(request: NextRequest) {
     });
     const handler = createCopilotRuntimeHandler({ runtime, basePath: "/api/copilotkit",
       cors: { origin: process.env.BENEFITS_APP_ORIGIN || request.headers.get("origin") || request.nextUrl.origin, credentials: true } });
-    return handler(request);
+    return await handler(input.text === undefined ? request : new NextRequest(request.url, {
+      method: request.method, headers: request.headers, body: input.text, signal: request.signal,
+    }));
   } catch (error) {
     console.error("Copilot runtime unavailable", { type: error instanceof Error ? error.name : "unknown" });
     return safeError("AGENT_RUNTIME_UNAVAILABLE");
