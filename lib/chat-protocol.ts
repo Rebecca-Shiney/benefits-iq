@@ -88,7 +88,7 @@ export async function* readChatEvents(body: ReadableStream<Uint8Array>, threadId
     while (!terminal) {
       const { value, done } = await reader.read();
       if (done) {
-        buffer += decoder.decode();
+        try { buffer += decoder.decode(); } catch { throw new ChatProtocolError(); }
         if (buffer.trim()) throw new ChatProtocolError();
         break;
       }

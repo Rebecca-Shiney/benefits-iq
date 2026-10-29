@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir --requirement requirements.lock.txt && pip check 
     && useradd --system --uid 10001 --create-home benefits
 COPY --chown=benefits:benefits service ./service
 COPY --chown=benefits:benefits agents ./agents
-COPY --chown=benefits:benefits infra/schema.sql ./infra/schema.sql
+COPY --chown=benefits:benefits infra/schema.sql infra/grant-runtime.sql ./infra/
 USER benefits
 EXPOSE 8000
 CMD ["python", "-m", "service.cloud_entrypoint"]

@@ -75,3 +75,11 @@ test("chat cancellation never silently retries and keeps controls usable", async
   await expect(chat.getByLabel("Case-bound chat message")).toBeEnabled();
   await expect(chat.getByRole("button", { name: "Retry last message" })).toBeEnabled();
 });
+
+test("expired chat authentication asks for sign-in instead of blind retry", async ({ page }) => {
+  await page.route("**/api/chat", route => route.fulfill({ status: 401, contentType: "application/json", body: "{}" }));
+  const chat = await openChat(page);
+  await chat.getByLabel("Case-bound chat message").fill("Current status");
+  await chat.getByRole("button", { name: "Send message", exact: true }).click();
+  await expect(chat.getByRole("alert")).toContainText("Sign in again before retrying chat");
+});

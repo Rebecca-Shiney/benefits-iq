@@ -15,13 +15,8 @@ class SafeFormatter(logging.Formatter):
         return json.dumps(event)
 
 
-def main():
-    if os.environ.get("BENEFITS_PROFILE") != "starter":
-        raise RuntimeError("CLOUD_ENTRYPOINT_REQUIRES_STARTER")
-    if os.environ.get("OTEL_SDK_DISABLED", "").lower() != "true":
-        raise RuntimeError("CLOUD_TRACING_MUST_BE_DISABLED")
-    import uvicorn
-    uvicorn.run("service.app:app", host="0.0.0.0", port=8000, access_log=False, log_config={
+def logging_configuration():
+    return {
         "version": 1, "disable_existing_loggers": False,
         "formatters": {"safe": {"()": SafeFormatter}},
         "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "safe", "stream": "ext://sys.stdout"}},
@@ -32,7 +27,17 @@ def main():
             "uvicorn.error": {"level": "INFO"},
             "uvicorn.access": {"handlers": [], "propagate": False},
         },
-    })
+    }
+
+
+def main():
+    if os.environ.get("BENEFITS_PROFILE") != "starter":
+        raise RuntimeError("CLOUD_ENTRYPOINT_REQUIRES_STARTER")
+    if os.environ.get("OTEL_SDK_DISABLED", "").lower() != "true":
+        raise RuntimeError("CLOUD_TRACING_MUST_BE_DISABLED")
+    import uvicorn
+    uvicorn.run("service.app:app", host="0.0.0.0", port=8000, access_log=False,
+                log_config=logging_configuration())
 
 
 if __name__ == "__main__":

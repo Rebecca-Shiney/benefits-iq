@@ -17,6 +17,7 @@
 !agents/**
 !infra/
 !infra/schema.sql
+!infra/grant-runtime.sql
 !infra/Dockerfile.web
 !infra/Dockerfile.api
 **/__pycache__/

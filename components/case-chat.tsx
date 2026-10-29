@@ -76,8 +76,13 @@ export function CaseChat({ caseId }: { caseId: string }) {
       const cancelled = abort.signal.aborted;
       update({ status: cancelled ? "cancelled" : "failed" });
       if (mounted.current) {
-        const code = failure instanceof Error && failure.message === "CONVERSATION_LIMIT_CLEAR_CHAT"
-          ? "Conversation is too large. Clear chat before starting a new conversation."
+        const messages: Record<string, string> = {
+          CONVERSATION_LIMIT_CLEAR_CHAT: "Conversation is too large. Clear chat before starting a new conversation.",
+          SIGN_IN_REQUIRED: "Sign-in expired or unavailable. Sign in again before retrying chat.",
+          CASE_ACCESS_DENIED: "Access to this case was denied. Refresh your workspace; retry only after access is restored.",
+        };
+        const code = failure instanceof Error && Object.hasOwn(messages, failure.message)
+          ? messages[failure.message]
           : "Chat did not finish. Refresh the case before retrying; partial text is not a completed response.";
         setError(cancelled ? "Chat cancelled. Partial text is not a completed response." : `${code}${traceId ? ` Trace ${traceId}` : ""}`);
         setActivity(cancelled ? "Chat cancelled. Nothing is replayed automatically." : "Chat unavailable. No automatic retry.");

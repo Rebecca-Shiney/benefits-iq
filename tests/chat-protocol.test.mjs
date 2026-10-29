@@ -77,6 +77,7 @@ test("wrong case/run, forged tool, malformed message ordering and missing termin
 test("invalid UTF-8/JSON and oversized pending frames are bounded", async () => {
   for (const stream of [
     body(new Uint8Array([0xc3, 0x28])),
+    body(new Uint8Array([0xc3])),
     body("data: {\n\n"),
     body("data: " + "x".repeat(CHAT_LIMITS.frame)),
   ]) await assert.rejects(collect(stream), /CHAT_STREAM_INVALID/);

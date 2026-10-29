@@ -2,7 +2,28 @@
 
 ## Status and approval boundary
 
-**Approved: synthetic-only Azure-native Starter and first-party chat replacement. Preparation in progress; not ready for validation or deployment. Enterprise governance remains gated.**
+**Approved: public synthetic-only showcase, Azure-native cloud connections and first-party chat. Preparation in progress; not ready for validation or deployment. Enterprise governance remains gated.**
+
+The user explicitly superseded end-user sign-in with credential-free selectable
+synthetic views, then approved public URL access with abuse restrictions.
+Showcase personas are NOT authenticated roles; anyone can select any enabled
+view and perform enabled synthetic actions. No reviewer assignment, SPA
+registration or user app-role bootstrap is a showcase prerequisite. Keep future
+authenticated Starter code isolated and label it not verified live.
+
+The backend remains private and accepts only its exact managed-identity caller,
+with signed tenant/issuer/audience/lifetime and app-only caller client/principal
+checks. No application secret or demo HMAC sharing in deployed showcase mode.
+User data must be limited to original synthetic fixtures. Public writes must be
+structured/bounded, with anonymous demo actor provenance, explicit human actions
+and idempotency; chat tools remain read-only. No uploads, arbitrary remote URL
+retrieval, external sending, arbitrary case creation or stored freeform chat.
+Enforce request/model/concurrency/rate budgets server-side, warn against sensitive
+input, and retain Canadian regional inference. This supersedes the pending
+end-user ACL alternative below; service caller ACL verification remains required.
+Stage minimal MI proof before other paid services where feasible. No Fabric or
+Purview operations are authorized. Do not equate public personas with privacy,
+verified human identity, production security or healthcare compliance.
 
 The user explicitly approved replacing the affected CopilotKit UI/runtime and
 AG-UI JavaScript client with a first-party accessible chat and authenticated
@@ -185,16 +206,80 @@ logs as sanitized metadata while retaining application error codes/traces.
 Formatter/mode guard tests pass, but Docker is absent: image build/run/scanning
 is not claimed. Current npm full/production audit remains zero.
 
-Explicit initial application access binding has been requested for user approval;
-do not infer a clinical role from the signed-in deployer's subscription authority.
-No Entra role has been assigned while this choice is pending.
+The user explicitly approved the verified signed-in deployer object
+`6b167e8a-0d5c-467d-9917-bf34e2102fcf` in tenant
+`eec5bf3a-3dfb-4af5-8487-9b189e5aa20f` as the initial
+`Benefits.Reviewer`, restricted to `SYN-EMP-A`. Everyone else remains denied.
+This is an approved application binding, not a grant of Azure/tenant rights.
+No Entra role has been assigned yet. Do not enroll Hira now or infer an Entra
+identity from a name. Future enrollment needs verified tenant/object identity,
+explicit approved role/employer scope and an app-role assignment plus matching
+backend binding. GitHub repository access never grants application access.
+Provide an idempotent explicit collaborator enrollment command in bootstrap.
 
-Bicep/resource templates, Entra/SQL permission bootstrap, synthetic source/
-PDF/index seeding, deployment/rerun diagnostics and live verification are still
-unfinished. SQL startup currently requires an initialized schema; setup must
+`service/cloud_seed.py` now generates original deterministic synthetic PDFs,
+version/hash-checked member/plan/criteria sources, a separate aggregate snapshot
+and a governed Search index. Source/index discovery errors are not absence;
+reruns skip unchanged data and reject version/content/schema collisions rather
+than overwrite evidence. It derives pristine sources from original fixtures,
+not potentially edited authoritative cases. Case reseeding preserves workflow
+history. Eighteen seed tests cover determinism, additive reruns, drift,
+partial upload failures, explicit setup mode and separate runtime identity.
+
+`infra/grant-runtime.sql` prepares a separate runtime contained principal using
+the managed identity **client ID** and `WITH SID ... TYPE=E`, explicitly documented
+for Azure SQL Database in CREATE USER example K:
+https://learn.microsoft.com/en-us/sql/t-sql/statements/create-user-transact-sql?view=azuresqldb-current#k-create-a-contained-database-user-from-a-microsoft-entra-principal-without-validation
+This resolves the earlier documentary ambiguity, not live verification. It
+avoids directory lookup/Directory Readers for this grant path. Source writes,
+audit/decision/history rewrites and DDL are denied. Broad generic
+`db_datareader`/`db_datawriter` hook examples are not used because they violate
+this application's approved immutable-source/append-only boundary.
+
+Bicep/resource templates, Entra/bootstrap/setup-job orchestration,
+deployment/rerun diagnostics and live verification are still unfinished.
+SQL startup currently requires an initialized schema; setup must
 run before application startup, not rely on the runtime to create tables.
 Keep this plan out of Ready for Validation until these and replacement validation
 are resolved. No app registration/resource/role assignment has been created.
+
+### Read-only identity-bootstrap alternatives (awaiting approval)
+
+The user has no administrator available and requested investigation, not an
+authorization change. Tenant policy reports app creation allowed. Active direct
+directory roles and complete role-assignable group discovery did not show an
+application-role assigner; however, ownership/default user rights are separate,
+so absence of a directory role alone is not a definitive failed-write result.
+No Graph write was attempted. Existing CLI delegation includes owned-application
+updates and app-role assignment scopes; these do not by themselves establish
+resource-specific user authority. Token inspection emitted capability booleans
+only; no token was displayed or persisted.
+
+The documented candidate is owned single-tenant SPA/API registration, a
+preauthorized `access_as_user` scope only for our SPA, and protected default-deny
+OID/role/employer bindings. Require independent signed tenant/issuer/audience,
+version/lifetime and actor validation in Next/Python. For the backend caller,
+require app-only `idtyp=app`, no delegated scope, exact web MI client ID (`azp`)
+and principal ID (`oid`); the user token alone is insufficient. Configure API v2
+tokens and optional access-token `idtyp`. This would not depend on Graph app-role
+assignment; unknown users/callers remain denied by the resource servers.
+
+Tradeoff: app-specific authorization moves from centrally assigned Entra roles
+to protected deployment configuration. Assignment-required must be false for
+role-less token issuance, which is not the same as granting application access.
+No groups/Graph permissions are needed for the initial single-user binding.
+Tenant consent/Conditional Access restrictions remain authoritative. Actual
+owned-app configuration, delegated sign-in and managed-identity token issuance
+have not been proved and cannot be established against nonexistent registrations
+and identities with read-only checks. Paid provisioning stays paused pending an
+approved, demonstrated bootstrap path. Current authentication code is unchanged.
+
+Primary references:
+- ACL and role-less app-only tokens: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow#access-control-lists
+- Subject/actor and app-only validation: https://learn.microsoft.com/en-us/entra/identity-platform/claims-validation
+- Explicit SPA preauthorization: https://learn.microsoft.com/en-us/graph/api/resources/preauthorizedapplication?view=graph-rest-1.0
+- Non-admin owned-app update rights: https://learn.microsoft.com/en-us/graph/api/application-update?view=graph-rest-1.0
+- `idtyp` claim: https://learn.microsoft.com/en-us/entra/identity-platform/optional-claims-reference
 - The user subsequently approved **planning reuse** of existing `dbtdemo` F2.
   ARM confirms it belongs to the selected subscription, resource group
   `testing`, region Canada East, SKU F2, state `Paused`, provisioning state

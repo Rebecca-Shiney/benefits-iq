@@ -156,11 +156,38 @@ and traces remain observable.
 Docker is unavailable on the current host, so those images have **not** been
 built/run or remotely scanned. Full image/package validation must precede public
 exposure. Resource IaC, remote image build/push, Entra registration/role bootstrap,
-SQL principal/schema/seed setup, Search indexing and reproducible cloud readiness
-checks remain unfinished. Initial reviewer access needs an explicit approved
-object-ID/role/employer binding; deployment rights are not automatic clinical
-access. `azd up` must not be presented as working, nor `/health` liveness as proof
+setup-job orchestration and reproducible cloud readiness checks remain unfinished.
+The source/bootstrap implementation is `service/cloud_seed.py`: it generates
+original deterministic synthetic PDFs, inserts version/hash-checked SQL sources
+and a separate aggregate snapshot, and creates/seeds a governed Search index.
+It refuses source/index drift instead of overwriting evidence; case reseeding
+preserves human edits, decisions and audit. `infra/grant-runtime.sql` prepares
+read-only source permissions and append-only audit/decision/brief writes, not
+broad database reader/writer roles. It uses the documented Azure SQL contained
+principal SID form, with the managed identity's **client ID**, avoiding directory
+lookup grants. These paths are locally tested, **not executed against Azure SQL
+or Search**; live principal/permission and rerun checks remain mandatory.
+
+The user approved the verified signed-in deployment
+account as the initial `Benefits.Reviewer` for `SYN-EMP-A` only; no assignment
+has been created yet. All other users remain denied. Deployment rights are not
+automatic clinical access. `azd up` must not be presented as working, nor `/health` liveness as proof
 of ready cloud connections.
+
+**Collaborator onboarding:** sharing this GitHub repository does not grant
+dashboard or clinical access. Hira is not enrolled automatically. When access
+is requested, verify the person's object ID in the deployment's Entra tenant,
+obtain explicit role/employer approval, assign that application role and add the
+matching backend identity binding. Until both agree, access remains denied.
+The repeatable enrollment command is still being implemented with bootstrap;
+there is no working command to advertise yet.
+
+The proposed Entra app-role assignment route is under review: read-only checks
+did not establish an active application-administrator role, but this is not a
+failed-write proof that all owned-app operations are impossible. A supported
+app-owned ACL alternative is being evaluated with the user; current deployed-mode
+code still requires signed Entra role claims. Neither an unapproved auth change
+nor a demo-identity fallback has been enabled.
 
 ### Security guarantees versus non-guarantees
 
@@ -441,6 +468,10 @@ These nine HTTP checks are skipped when the URL is unset; the backend suite does
 not pretend that an in-process test proves a working Next.js runtime.
 
 For repeatable browser acceptance checks against the running demo:
+
+Use a freshly started demo process, or wait a minute between back-to-back suites.
+The backend's 120-requests-per-identity/minute limit remains enabled; accumulated
+requests from earlier checks can correctly produce `RATE_LIMIT_RETRY_LATER`.
 
 ```powershell
 npx playwright install chromium

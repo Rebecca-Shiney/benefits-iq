@@ -90,8 +90,7 @@ def initialize():
         seed_records(db)
 
 
-def seed_records(db, reviewer_owners=None):
-    owners = {"SYN-EMP-A": "reviewer-a", "SYN-EMP-B": "reviewer-b"} if reviewer_owners is None else reviewer_owners
+def synthetic_case_records():
     for i, scenario in enumerate(SCENARIOS, 1):
         case_id = f"SYN-CASE-{i:03}"
         employer = "SYN-EMP-A" if i in {1, 2, 3, 6, 8, 10} else "SYN-EMP-B"
@@ -112,6 +111,15 @@ def seed_records(db, reviewer_owners=None):
             "form_source": f"SYN-FORM-{i:03}", "form_version": "form-v1",
         }
         expiry = (date.today() + timedelta(days=21 if i == 4 else 8)).isoformat() if scenario == "renewal" else None
+        yield {"id": case_id, "employer": employer, "member": f"SYN-MEMBER-{i:03}",
+               "scenario": scenario, "payload": payload, "expiry": expiry}
+
+
+def seed_records(db, reviewer_owners=None):
+    owners = {"SYN-EMP-A": "reviewer-a", "SYN-EMP-B": "reviewer-b"} if reviewer_owners is None else reviewer_owners
+    for i, record in enumerate(synthetic_case_records(), 1):
+        case_id, employer, scenario = record["id"], record["employer"], record["scenario"]
+        payload, expiry = record["payload"], record["expiry"]
         db.execute(
             "INSERT OR IGNORE INTO cases VALUES(?,?,?,?,?,1,?,NULL,NULL,?)",
             (case_id, employer, f"SYN-MEMBER-{i:03}", scenario, "received", json.dumps(payload), expiry),
