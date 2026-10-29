@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Validated: corrected minimal foundation/private-proof phase only. Foundation resources are created, the replacement API image passed its scan, and the private job passed renewed provider validation/what-if. No application/data services or public URL are deployed. Enterprise governance remains gated.**
+**Validated: Canadian data/private-application phase. Foundation, both image scans and the real managed-identity positive/four-negative proof are complete. Data and both private-hosting templates passed actual-ID provider validation/what-if. No application/data services or public URL are deployed yet. Enterprise governance remains gated.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable
 synthetic views, then approved public URL access with abuse restrictions.
@@ -98,7 +98,8 @@ scans have no High/Critical findings, but are not final-image acceptance.
 The first complete API build passed its Python 3.12 tests/ODBC check, then its
 final-image scan blocked on bundled tooling. Removing unused system/venv
 pip/setuptools resolved those findings in the replacement API image. Its
-exact-digest scan passed; the frontend image and live identity proof remain gates.
+exact-digest scan passed; the frontend image and live identity proof have also
+passed, as recorded below. Data/private application validation remains next.
 The owned API audience and Canadian foundation now exist; no application is
 deployed or live-verified. See the execution evidence below.
 
@@ -751,6 +752,18 @@ permission to impose a schedule or pause the shared capacity; its owner must
 approve availability for all workloads. Fabric smoothing/settlement, storage,
 load and other charges may prevent simple hour scaling from matching the bill.
 
+On 2026-10-29, fresh `prices.azure.com/api/retail/prices` Canadian Consumption
+queries returned Search Basic at USD0.101/unit-hour (USD73.73/730 hours) and
+SQL Database General Purpose - Serverless - Compute Gen5, 1-vCore `vCore`,
+at USD0.62611/vCore-hour. The Search API's historical `serviceName` is
+`Azure Cognitive Search`; the newer-name query returned no items and was not
+treated as zero cost. Continuous 0.5/1-vCore equivalents are approximately
+USD228.53/USD457.06 before SQL storage/Defender; memory-based compute charging
+can also raise actual SQL cost. The earlier USD20-USD220 SQL allowance assumes
+effective pauses/light use, not continuous maximum load. No hard cap is
+promised; sustained activity can exceed the overall allowance. The selected
+small-demo service scope is unchanged, with no paid regional build pool/Fabric.
+
 The retail price API initially returned HTTP 429, then bounded Canadian queries
 succeeded. Returned Fabric workload CU/storage/reservation meters did not
 establish a base F2 pay-as-you-go compute quote. The resumed F2 line remains a
@@ -792,8 +805,9 @@ validation. This does not claim that unavailable local Docker already built them
   - [x] Azure Policy: actual CLI assignment read (Azure MCP is unavailable) shows the same three database-protection initiatives, no discovered denial. Provider-level foundation validation succeeds; policy-driven SQL Defender remains in the allowance and cannot be disabled.
   - [x] Renewed private job validation at `2026-10-29T14:34:03Z`: `az deployment group validate` and `what-if --validation-level Provider --result-format ResourceIdOnly --no-pretty-print` for `infra\job.bicep`, actual stored foundation/identity IDs and accepted API digest. Both Succeeded, errors null; one job Create, seven existing-resource Ignore entries, no deletion. Corrected AVM's CPU input to string `'0.5'`, not a JSON float. Local evidence: `.azure\identity-job-validation.json` (ignored). Subscription policy read still returns the three protection initiatives; an empty RG listing was not treated as absence of inherited policy.
   - [x] Real API build `cw5`, digest `sha256:e29d294ce5194d6604e72efa5b7a78c104a2f7a17bf7fdc149197a58fdf6306d`: build tests/ODBC and final non-root SDK imports/no-packaging-tools assertions pass. Exact-digest Trivy acceptance passes with OS and language results, no blocking language vulnerabilities/secrets or High/Critical OS findings. No suppression/waiver.
-- [ ] Data/app phase provider validation/what-if using actual foundation IDs.
-- [ ] Both built runtime image scans, private MI/source/model acceptance, then public/browser checks.
+- [x] Data/app phase provider validation/what-if using actual foundation IDs, accepted image digests and private ingress: all three validations and previews Succeeded with errors null at `2026-10-29T14:50:35Z`-`14:50:44Z`. `data.bicep`: 13 Create changes, no Delete. Each `hosting.bicep` preview: one app Create, no Delete; predicted registry role-assignment IDs match the already-propagated API/web AcrPull assignments. Local generated evidence: `.azure\data-validation.json`, `.azure\api-hosting-validation.json`, `.azure\web-hosting-validation.json` (ignored). Preview configurations validate resource structure, not application startup or data connections.
+- [x] Both actual runtime image scans and real private MI positive/four-negative proof.
+- [ ] Private source/model/workflow acceptance, then public/browser checks. No clinical decision is submitted by deployment automation.
 
 ### Role Assignment Verification
 
@@ -848,7 +862,21 @@ and known language-package vulnerability; the OS threshold remains High/Critical
 The replacement API image passed as recorded above. The private proof job
 initially failed provider validation before creation because AVM expects its CPU
 parameter as a string; the corrected template now passes validation/what-if.
-Live token issuance and the frontend build remain outstanding.
+The first successful proof's terminal replica expired before receipt recovery.
+A new bounded proof execution, `p-biq-benefits-iq-bb2168f95c9d-tsuubkj`,
+succeeded and its validated receipt is persisted in the ignored environment
+state. The signed web-MI token passed independent validation and four wrong
+tenant/API-audience/caller-client/caller-principal configurations were rejected.
+No token was exposed and no data service was exercised. Real CLI text logs use
+timestamp/`stdout F` framing; the extension's nested JSON output was invalid.
+The parser now accepts exactly one complete framed JSON receipt, not arbitrary
+substrings/partial/stderr records, and retains execution/image binding.
+
+The frontend image also built and passed exact-digest vulnerability/secret
+acceptance: `sha256:468fe702db7317007fdb98240d50bae59ee9b74c3585546d46aa3b772f797620`.
+Both container builds and the private MI proof are complete, not merely
+candidate-base scans. The latest targeted bootstrap/proof suite has 75 passing
+tests. Data/private-application provider validation and live connections are next.
 
 Final images, private MI/source/model proofs, data services and public/browser
 cloud acceptance remain outstanding. The existing foundation can incur registry/

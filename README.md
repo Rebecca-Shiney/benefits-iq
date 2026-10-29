@@ -226,14 +226,17 @@ used instead. The first complete API image built, but its final-image scan
 found vulnerable bundled Python tooling absent from the application lockfile
 audit. Removing unused system/venv pip and setuptools resolved those findings:
 the replacement API image passed its exact-digest scan and final non-root
-SDK/ODBC assertions. The frontend image and live identity/data/model proofs
-remain acceptance gates. Candidate distroless Node 24 and Microsoft Azure Linux 3 Python
-3.12 base scans are **not final-image results**. Full image/package and secret
+SDK/ODBC assertions. The frontend image also passed, and a real private job
+verified managed-identity issuance plus four wrong-configuration denials.
+Live data/model connections and the application remain acceptance gates.
+Candidate distroless Node 24 and Microsoft Azure Linux 3 Python
+3.12 base scans alone are **not final-image results**. Full image/package and secret
 scanning must precede public exposure; incomplete or wrong-digest scan reports
 fail closed.
 `infra/foundation.bicep`, `infra/data.bicep`, `infra/job.bicep` and
 `infra/hosting.bicep` compile; audience/bootstrap/private-acceptance and runtime
-source probes have local tests, not Azure execution evidence.
+source probes have local tests; live SQL/Search/OCR/model execution remains
+outstanding. The private identity-proof job has actual Azure execution evidence.
 The source/bootstrap implementation is `service/cloud_seed.py`: it generates
 original deterministic synthetic PDFs, inserts version/hash-checked SQL sources
 and a separate aggregate snapshot, and creates/seeds a governed Search index.
@@ -361,6 +364,17 @@ Defender planning line of $15. These are allowances, **not a quote or cap**;
 tax, agreements, licenses, load and private networking can change the total.
 SQL probes/connections can prevent auto-pause. Alerts are not hard spending caps.
 Model capacity discovery does not reserve inference capacity.
+
+Public Canadian meters rechecked on October 29, 2026: Search Basic is
+US$0.101/unit-hour (about $73.73 over 730 hours); Gen5 general-purpose SQL
+serverless compute is US$0.62611/vCore-hour. Continuous 0.5/1-vCore
+equivalents are about $229/$457 monthly **before storage and Defender**;
+serverless memory-based billing can also raise the charged compute.
+The $20-$220 SQL allowance assumes effective pauses/light use, not a continuous
+maximum. Sustained activity can exceed the overall planning range. No free
+SQL/search tier, hard spending cap or guaranteed auto-pause is claimed.
+Source: [Azure Retail Prices API](https://prices.azure.com/api/retail/prices);
+actual agreement/billing meters still govern.
 
 Starter removes the prior $300-$500/month continuous-F2 compute allowance;
 it creates no Fabric running charge. Enterprise's historical combined
