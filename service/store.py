@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from .fixtures import MEMBERS, RECEIVED_HOURS_AGO, SCENARIOS, TASKS
-from .profile import starter
+from .profile import cloud
 from .cancellation import check_cancelled
 
 
@@ -17,7 +17,7 @@ def now() -> str:
 @contextmanager
 def connection():
     check_cancelled()
-    if starter():
+    if cloud():
         from .sql_store import connection as sql_connection
         with sql_connection() as db:
             yield db
@@ -47,7 +47,7 @@ def audit(db, case_id: str, actor: str, event: str, trace: str):
 
 
 def initialize():
-    if starter():
+    if cloud():
         from .sql_store import verify_schema
         verify_schema()
         return

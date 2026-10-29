@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from .contracts import Brief, CriteriaLookup, DecisionInput, Eligibility, EvidenceItem, Extraction, FormInput, Member360, Source
 from .catalog import CRITERIA, PLANS
 from .store import audit, connection, now
-from .profile import starter
+from .profile import cloud, showcase
 
 
 @dataclass(frozen=True)
@@ -30,28 +30,31 @@ REQUIRED_FIELDS = {"member_id", "drug", "indication", "prescriber", "prior_thera
 
 
 def identities():
-    if starter():
+    if showcase():
+        from .showcase import identities as demo_identities
+        return demo_identities()
+    if cloud():
         from .entra_auth import EntraConfiguration
         return EntraConfiguration.from_environment().identities
     return IDENTITIES
 
 
 def member_payload(db, row):
-    if starter():
+    if cloud():
         from .azure_services import member_payload as cloud_payload
         return cloud_payload(db, row)
     return json.loads(row["payload"])
 
 
 def plan_document(plan_id, employer):
-    if starter():
+    if cloud():
         from .azure_services import plan_document as cloud_plan
         return cloud_plan(plan_id, employer)
     return PLANS[plan_id]
 
 
 def source_criterion(payload, employer):
-    if starter():
+    if cloud():
         from .azure_services import source_criterion as cloud_criterion
         return cloud_criterion(payload, employer)
     return CRITERIA.get((payload["plan"], payload["fields"]["drug"]["value"], payload["fields"]["indication"]["value"]))
@@ -121,6 +124,9 @@ def case_view(identity: Identity, case_id: str):
                 "decision": json.loads(row["decision"]) if row["decision"] else None,
                 "missing_information_draft": "Please verify the following form fields: " + ", ".join(missing_fields(payload)) if missing_fields(payload) else None,
             })
+            if showcase():
+                from .showcase import field_values
+                result["showcase_fields"] = {name: field_values(case_id, name) for name in REQUIRED_FIELDS}
         return result
 
 
@@ -144,7 +150,7 @@ def extract_authorization_form(identity: Identity, case_id: str):
     with connection() as db:
         row = load(db, identity, case_id, True)
         payload = json.loads(row["payload"])
-    if starter() and not payload["form_version"].startswith("form-verified-"):
+    if cloud() and not payload["form_version"].startswith("form-verified-"):
         from .azure_services import extract_document
         return extract_document(row)
     else:
@@ -175,7 +181,7 @@ def get_claims_history(identity: Identity, case_id: str):
 
 def retrieve_drug_criteria(identity: Identity, case_id: str):
     payload = get_member_360(identity, case_id)
-    if starter():
+    if cloud():
         from .azure_services import retrieve_criteria
         criterion = retrieve_criteria(payload, identity.employer)
     else:
@@ -240,6 +246,8 @@ def prepare_brief(identity: Identity, case_id: str, version: int, trace_id: str 
         if row["decision"]:
             fail(409, "DECIDED_CASE_IMMUTABLE")
         latest_version = db.execute("SELECT max(version) FROM briefs WHERE case_id=?", (case_id,)).fetchone()[0]
+        if showcase() and latest_version is not None and latest_version >= 10:
+            fail(429, "SHOWCASE_BRIEF_LIMIT")
         brief.version = (latest_version or 0) + 1
         db.execute("INSERT INTO briefs VALUES(?,?,?,?,?)",
                    (case_id, brief.version, brief.model_dump_json(), identity.id, now()))
@@ -270,7 +278,7 @@ def intake(identity: Identity, case_id: str, version: int, trace_id: str | None 
         if row["decision"]:
             fail(409, "DECIDED_CASE_IMMUTABLE")
         state = "intake_incomplete" if result["missing"] else "intake_checked"
-        if starter():
+        if cloud():
             payload = json.loads(row["payload"])
             payload["fields"] = result["fields"]
             payload["form_version"] = result["source_version"]
@@ -284,6 +292,10 @@ def intake(identity: Identity, case_id: str, version: int, trace_id: str | None 
 
 
 def verify_form(identity: Identity, case_id: str, request: FormInput):
+    if showcase():
+        from .showcase import field_values
+        if any((field.value or "") not in field_values(case_id, name) for name, field in request.fields.items()):
+            fail(422, "SHOWCASE_SYNTHETIC_VALUES_ONLY")
     if set(request.fields) != REQUIRED_FIELDS:
         fail(422, "EXACT_FORM_FIELDS_REQUIRED")
     if any(f.source != f"{case_id.replace('SYN-CASE', 'SYN-FORM')}#{name}" for name, f in request.fields.items()):
@@ -306,6 +318,15 @@ def verify_form(identity: Identity, case_id: str, request: FormInput):
 
 
 def record_human_decision(identity: Identity, case_id: str, request: DecisionInput):
+    if showcase():
+        from uuid import UUID
+        from .showcase import OPTIONS
+        try:
+            valid_key = UUID(request.idempotency_key).version == 4
+        except ValueError:
+            valid_key = False
+        if request.reason not in OPTIONS["reasons"] or not valid_key:
+            fail(422, "SHOWCASE_PRESET_REASON_AND_UUID_REQUIRED")
     fingerprint = hashlib.sha256(request.model_dump_json().encode()).hexdigest()
     with connection() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -336,7 +357,7 @@ def record_human_decision(identity: Identity, case_id: str, request: DecisionInp
 def employer_aggregate(identity: Identity, employer: str):
     if identity.role != "employer" or identity.employer != employer:
         fail(403, "EMPLOYER_SCOPE_DENIED")
-    if starter():
+    if cloud():
         from .azure_services import aggregate
         return aggregate(employer)
     # Separate fictional portfolio; never derive cells from the workflow members.

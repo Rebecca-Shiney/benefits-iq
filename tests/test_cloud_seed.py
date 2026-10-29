@@ -168,3 +168,32 @@ def test_runtime_identity_cannot_be_used_as_setup_identity(monkeypatch):
     monkeypatch.setattr(cloud_seed, "validate_configuration", lambda: None)
     with pytest.raises(RuntimeError, match="SEPARATE_SETUP_AND_RUNTIME_IDENTITIES_REQUIRED"):
         cloud_seed.main()
+
+
+def test_showcase_setup_seeds_anonymous_owners_without_enduser_configuration(monkeypatch, bundle, capsys):
+    from unittest.mock import MagicMock
+    settings = {"BENEFITS_PROFILE": "showcase", "BENEFITS_SETUP_MODE": "1", "OTEL_SDK_DISABLED": "true",
+                "BENEFITS_RUNTIME_SQL_CLIENT_ID": "11111111-1111-4111-8111-111111111111",
+                "BENEFITS_MANAGED_IDENTITY_CLIENT_ID": "22222222-2222-4222-8222-222222222222",
+                "BENEFITS_SEARCH_ENDPOINT": "https://synthetic.search.windows.net",
+                "BENEFITS_SEARCH_INDEX": "criteria-v1"}
+    for key, value in settings.items():
+        monkeypatch.setenv(key, value)
+    for key in ("BENEFITS_IDENTITY_BINDINGS", "BENEFITS_SEED_REVIEWER_OWNERS", "BENEFITS_SPA_CLIENT_ID"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(cloud_seed.logging.config, "dictConfig", Mock())
+    monkeypatch.setattr(cloud_seed, "validate_configuration", lambda: None)
+    monkeypatch.setattr(cloud_seed.EntraConfiguration, "from_environment",
+                        lambda: pytest.fail("Showcase must not require end-user configuration."))
+    for name in ("SearchIndexClient", "SearchClient", "connection"):
+        monkeypatch.setattr(cloud_seed, name, MagicMock())
+    for name in ("seed_records", "seed_sources", "seed_search", "execute_batch"):
+        monkeypatch.setattr(cloud_seed, name, Mock())
+    monkeypatch.setattr(cloud_seed, "seed_bundle", lambda: bundle)
+    monkeypatch.setattr(cloud_seed, "credential", lambda: None)
+    cloud_seed.main()
+    assert cloud_seed.seed_records.call_args.kwargs["reviewer_owners"] == {
+        "SYN-EMP-A": "anonymous-demo:reviewer-a", "SYN-EMP-B": "anonymous-demo:reviewer-b",
+    }
+    assert "showcase_usage" in cloud_seed.execute_batch.call_args_list[0].args[1]
+    assert json.loads(capsys.readouterr().out)["status"] == "synthetic_setup_complete"

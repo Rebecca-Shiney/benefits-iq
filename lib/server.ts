@@ -2,8 +2,8 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
-import { cloudIdentity, runtimeAuthorization, starterMode, type CloudIdentity } from "./entra-server";
-export { starterMode } from "./entra-server";
+import { cloudIdentity, runtimeAuthorization, starterMode, showcaseMode, cloudMode, type CloudIdentity } from "./entra-server";
+export { starterMode, showcaseMode, cloudMode } from "./entra-server";
 
 export const demoUsers = ["reviewer-a", "reviewer-b", "contact-a", "employer-a", "employer-b"];
 
@@ -29,6 +29,7 @@ export async function identity(request?: NextRequest) {
   }
   const token = (await cookies()).get("benefits-demo-session")?.value;
   if (!token) return null;
+  if (showcaseMode()) return demoUsers.includes(token) ? token : null;
   const [user, expiry, sig] = token.split(".");
   if (!demoUsers.includes(user) || !expiry || !sig || Number(expiry) < Date.now()) return null;
   const expected = signature(`${user}.${expiry}`);
@@ -43,6 +44,15 @@ export function sameOrigin(request: NextRequest) {
 }
 
 export async function serviceHeaders(user: string | CloudIdentity, caseId?: string) {
+  if (showcaseMode()) {
+    if (typeof user !== "string" || !demoUsers.includes(user)) throw new Error("SYNTHETIC_VIEW_REQUIRED");
+    return {
+      "X-Benefits-Runtime-Authorization": await runtimeAuthorization(),
+      "X-Benefits-User": user,
+      ...(caseId ? { "X-Benefits-Case": caseId } : {}),
+      "Content-Type": "application/json",
+    };
+  }
   if (starterMode()) {
     if (typeof user === "string") throw new Error("DEMO_IDENTITY_NOT_ALLOWED");
     return {
@@ -62,7 +72,7 @@ export async function serviceHeaders(user: string | CloudIdentity, caseId?: stri
 }
 
 export function serviceUrl() {
-  if (starterMode() && !process.env.BENEFITS_SERVICE_URL) throw new Error("BACKEND_ENDPOINT_REQUIRED");
+  if (cloudMode() && !process.env.BENEFITS_SERVICE_URL) throw new Error("BACKEND_ENDPOINT_REQUIRED");
   return process.env.BENEFITS_SERVICE_URL || "http://127.0.0.1:8000";
 }
 

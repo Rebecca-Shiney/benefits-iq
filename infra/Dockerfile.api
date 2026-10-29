@@ -1,6 +1,6 @@
 FROM python:3.11-slim-bookworm@sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd
 WORKDIR /app
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BENEFITS_PROFILE=starter OTEL_SDK_DISABLED=true
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BENEFITS_PROFILE=showcase OTEL_SDK_DISABLED=true
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl libgssapi-krb5-2 \
     && curl --fail --silent --show-error --location https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb --output /tmp/microsoft-prod.deb \
     && dpkg -i /tmp/microsoft-prod.deb \

@@ -19,6 +19,7 @@ IF EXISTS(
     THROW 51001, 'RUNTIME_SQL_ROLE_MEMBERSHIP_REQUIRES_REVIEW', 1;
 
 GRANT SELECT ON dbo.schema_migrations TO benefits_runtime;
+GRANT SELECT, INSERT, UPDATE ON dbo.showcase_usage TO benefits_runtime;
 GRANT SELECT, UPDATE ON dbo.cases TO benefits_runtime;
 GRANT SELECT, INSERT ON dbo.audit TO benefits_runtime;
 GRANT SELECT, INSERT ON dbo.decisions TO benefits_runtime;
@@ -32,6 +33,7 @@ GRANT SELECT ON dbo.source_documents TO benefits_runtime;
 GRANT SELECT ON dbo.portfolio_aggregates TO benefits_runtime;
 
 DENY INSERT, UPDATE, DELETE ON dbo.schema_migrations TO benefits_runtime;
+DENY DELETE ON dbo.showcase_usage TO benefits_runtime;
 DENY INSERT, DELETE ON dbo.cases TO benefits_runtime;
 DENY UPDATE, DELETE ON dbo.audit TO benefits_runtime;
 DENY UPDATE, DELETE ON dbo.decisions TO benefits_runtime;

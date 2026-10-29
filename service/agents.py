@@ -4,12 +4,12 @@ import secrets
 from contextvars import ContextVar
 from pathlib import Path
 
-from agent_framework import Agent, AgentResponse, AgentResponseUpdate, BaseAgent, Content, Message, ResponseStream
+from agent_framework import Agent, AgentResponse, AgentResponseUpdate, BaseAgent, Content, Message, ResponseStream, tool
 from agent_framework.openai import OpenAIChatClient
 
 from . import domain
 from .store import audit, connection
-from .profile import starter
+from .profile import cloud, showcase
 from .cancellation import run_blocking
 
 
@@ -89,7 +89,7 @@ class SyntheticOrchestrator(BaseAgent):
 
 
 def model_agent():
-    if not starter() and (not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL")):
+    if not cloud() and (not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL")):
         domain.fail(503, "LIVE_MODEL_NOT_CONFIGURED")
     identity, case_id = request_context.get()
     # Bind context at construction; a model cannot choose another member or case.
@@ -110,7 +110,7 @@ def model_agent():
     if identity.role == "reviewer":
         tools.extend([read_intake_completeness, read_criteria_version])
     prompt = (Path(__file__).parent.parent / "agents" / "orchestrator.md").read_text()
-    if starter():
+    if cloud():
         from .azure_services import credential, endpoint
         client = OpenAIChatClient(
             model=os.environ["BENEFITS_MODEL_DEPLOYMENT"],
@@ -119,10 +119,16 @@ def model_agent():
         )
     else:
         client = OpenAIChatClient(model=os.environ["OPENAI_MODEL"])
+    if showcase():
+        client.function_invocation_configuration.update({
+            "max_iterations": 2, "max_function_calls": 3, "max_duration_seconds": 45.0,
+            "allow_concurrent_invocation": False, "include_detailed_errors": False,
+        })
+        tools = [tool(function, max_invocations=1, max_invocation_exceptions=1) for function in tools]
     return Agent(
         name="health_benefits_orchestrator",
         client=client,
-        default_options={"store": False, "max_tokens": 1500},
+        default_options={"store": False, "max_tokens": 500 if showcase() else 1500},
         instructions=prompt + "\nYou have only read-only, case-bound capabilities. Never infer clinical facts. "
         "State that all evidence sources are synthetic. Tell the user to use controlled UI actions for intake, evidence saves and human decisions.",
         tools=tools,

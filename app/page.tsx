@@ -5,6 +5,7 @@ import { CaseChat } from "@/components/case-chat";
 import { ActivitySchema, api, type Aggregate, type Case, type CaseOperations, type Field, type Session, type Task, type TaskKind, type Workbench } from "@/lib/contracts";
 import { dateTime, Documents, label, Metrics, Overview, TaskPanel } from "@/components/operations";
 import { authorizationHeaders, initializeAuth, signIn, signOut } from "@/lib/browser-auth";
+import { reasons } from "@/agents/showcase-options.json";
 
 const personas = [
   ["reviewer-a", "Clinical reviewer · Employer A"], ["reviewer-b", "Clinical reviewer · Employer B"],
@@ -42,7 +43,7 @@ export default function Workspace() {
   const [sendConfirmed, setSendConfirmed] = useState(false);
   const [notice, setNotice] = useState("");
   const [showChat, setShowChat] = useState(false);
-  const [authProfile, setAuthProfile] = useState<"local" | "starter" | null>(null);
+  const [authProfile, setAuthProfile] = useState<"local" | "starter" | "showcase" | null>(null);
   const controller = useRef<AbortController | null>(null);
   const decisionKey = useRef<string | null>(null);
   const caseRequest = useRef(0);
@@ -291,7 +292,7 @@ export default function Workspace() {
 
   async function reload() {
     setRunning(true); setError(""); setNotice("");
-    try { await refresh(current?.id); setNotice("Authorized data refreshed from the durable case store."); }
+    try { await refresh(current?.id); setNotice("Selected view refreshed from the durable case store."); }
     catch (e) { setError(String(e)); } finally { setRunning(false); }
   }
 
@@ -305,16 +306,22 @@ export default function Workspace() {
       <div className="header-note">BENEFITS OPERATIONS <span>/</span> HUMAN-LED REVIEW</div>
       <span className="pill synthetic">SYNTHETIC DATA ONLY</span>
     </header>
+    {authProfile === "showcase" && <section className="safety-strip" aria-label="Public showcase limitations">
+      <strong>PUBLIC SYNTHETIC SHOWCASE / NO SIGN-IN</strong>
+      <span>Anyone can switch every demo view and perform enabled synthetic actions. Roles are not authenticated access.
+        Never enter health or personal data. Shared decisions are anonymous, persistent demo records, not clinical advice or healthcare compliance.</span>
+    </section>}
     {!session && <div className="hero"><div><p className="eyebrow">CLARITY FOR EVERY CASE</p>
       <h1>Better evidence.<br /><span>Human decisions.</span></h1>
       <p className="subtitle">A governed workspace for special authorization and Member 360.</p></div>
       <section className="session-card" aria-label={authProfile === "starter" ? "Microsoft Entra sign-in" : "Local demo session"}>
-        {authProfile === "local" && <><label htmlFor="persona">LOCAL DEMO PERSONA</label>
+        {authProfile !== null && authProfile !== "starter" && <><label htmlFor="persona">{authProfile === "showcase" ? "PUBLIC DEMO VIEW" : "LOCAL DEMO PERSONA"}</label>
         <select id="persona" value={selectedUser} disabled={running} onChange={e => setSelectedUser(e.target.value)}>
           {personas.map(([id, label]) => <option value={id} key={id}>{label}</option>)}
         </select></>}
         <button onClick={login} disabled={running || !authProfile}>{authProfile === "starter" ? "Sign in with Microsoft Entra" : "Open workspace"} <span aria-hidden>→</span></button>
-        <small>{authProfile === "starter" ? "Azure-native synthetic data. Access is assigned by approved role and employer." : "Explicit demo identity switcher, not production authentication."}</small>
+        <small>{authProfile === "starter" ? "Azure-native synthetic data. Access is assigned by approved role and employer." :
+          authProfile === "showcase" ? "No credentials. All demo views are available to everyone; no verified user identity." : "Explicit demo identity switcher, not production authentication."}</small>
       </section>
     </div>}
     {session && <div className="dashboard-heading"><div><p className="eyebrow">BENEFITS OPERATIONS / {workbench?.employer.name || session.employer}</p>
@@ -335,7 +342,7 @@ export default function Workspace() {
       <div className="welcome-grid"><div><b>01</b><h3>Check completeness</h3><p>Uncertain fields stay uncertain.</p></div>
         <div><b>02</b><h3>Prepare evidence</h3><p>Versioned sources, explicit gaps.</p></div><div><b>03</b><h3>Decide with context</h3><p>Your decision. Recorded and traceable.</p></div></div></section>}
     {session && <div className="workspace-meta"><strong>{session.role === "reviewer" ? "Clinical review workspace" : session.role === "contact" ? "Contact centre" : "Employer insights"}</strong>
-      <span>{session.id} / {session.employer} / {session.profile === "starter" ? "Azure-native synthetic sources / regional model" : session.mode === "live" ? "Configured model chat" : "Deterministic synthetic agents"}</span></div>}
+      <span>{session.id} / {session.employer} / {session.profile !== "local" && session.profile ? "Azure-native synthetic sources / regional model" : session.mode === "live" ? "Configured model chat" : "Deterministic synthetic agents"}</span></div>}
     {aggregate && <section className="card"><p className="eyebrow">PORTFOLIO VIEW / AGGREGATES ONLY</p><h2>Specialty utilization trends</h2>
       <p>This separate fictional portfolio is not computed from the individual workflow members.</p>
       <div className="trend-grid">{aggregate.rows.map(r => <article className="trend" key={r.period}><h3>{r.period}</h3>
@@ -343,7 +350,7 @@ export default function Workspace() {
         <p>{r.cost === null ? "Suppressed" : `$${r.cost.toLocaleString()}`} synthetic cost</p></article>)}</div>
       <p>{aggregate.suppression}</p><small>Source: {aggregate.dataset} · {aggregate.as_of}. No causal conclusions or employee rankings.</small></section>}
     {session && session.role !== "employer" && <>
-      {workbench && <Metrics data={workbench} />}<div className="data-note"><span>{workbench ? `Snapshot ${dateTime(workbench.as_of)} · ${workbench.employer.id} · Only your authorized group` : "No operational snapshot available."}</span>
+      {workbench && <Metrics data={workbench} />}<div className="data-note"><span>{workbench ? `Snapshot ${dateTime(workbench.as_of)} · ${workbench.employer.id} · ${authProfile === "showcase" ? "Selected synthetic group, not authenticated access" : "Only your authorized group"}` : "No operational snapshot available."}</span>
         <button className="text-button" disabled={busy} onClick={reload}>Refresh data</button></div>
       <nav className="workbench-nav" aria-label="Operations views">
         <button aria-current={view === "cases" ? "page" : undefined} disabled={busy} onClick={() => setView("cases")}>Case queue <span>{workbench?.summary.total ?? "—"}</span></button>
@@ -360,7 +367,11 @@ export default function Workspace() {
         {!renewals.length && <p className="empty">No authorized renewals fall in this 30-day window.</p>}</section>}
       {view === "cases" && <div className="operations-layout">
       <aside className="queue card operational-queue" aria-busy={queueLoading}><div className="section-heading"><div><p className="eyebrow">YOUR AUTHORIZED GROUP</p><h2>Case queue</h2></div><span className="count">{workbench?.matched ?? "—"}</span></div>
-        <label className="sr-only" htmlFor="filter">Search cases</label><input id="filter" placeholder={session.role === "reviewer" ? "Search case, fictional member or ID" : "Search case ID"} value={filter} disabled={busy} onChange={e => setFilter(e.target.value)} />
+        <label className="sr-only" htmlFor="filter">Search cases</label>{authProfile === "showcase" ?
+          <select id="filter" value={filter} disabled={busy} onChange={e => setFilter(e.target.value)}>
+            <option value="">All synthetic cases in this view</option>
+            {Array.from({ length: 12 }, (_, i) => `SYN-CASE-${String(i + 1).padStart(3, "0")}`).map(id => <option key={id}>{id}</option>)}
+          </select> : <input id="filter" maxLength={100} placeholder={session.role === "reviewer" ? "Search case, fictional member or ID" : "Search case ID"} value={filter} disabled={busy} onChange={e => setFilter(e.target.value)} />}
         <div className="queue-filters"><label>Status<select value={statusFilter} disabled={busy} onChange={e => setStatusFilter(e.target.value)}>
           <option value="all">All statuses</option>{["received", "intake_checked", "intake_incomplete", "review_ready", "information_requested", "approved", "declined"].map(s => <option key={s} value={s}>{label(s)}</option>)}</select></label>
           <label>Priority<select value={priorityFilter} disabled={busy} onChange={e => setPriorityFilter(e.target.value)}><option value="all">All priorities</option><option value="priority">Priority</option><option value="standard">Standard</option></select></label>
@@ -387,16 +398,20 @@ export default function Workspace() {
         <nav className="case-tabs" aria-label="Case sections">{tabs.map(t => <button key={t} aria-current={tab === t ? "page" : undefined} disabled={busy} onClick={() => setTab(t)}>{t === "tasks" ? `Tasks (${operations.tasks.filter(x => x.state !== "done").length})` : label(t)}</button>)}</nav>
         {tab === "overview" && <Overview current={current} ops={operations} reviewer={session.role === "reviewer"} busy={busy} owner={owner} priority={priority} setOwner={setOwner} setPriority={setPriority} onAssign={saveRouting} onNavigate={setTab} />}
         {tab === "documents" && session.role === "reviewer" && <>
-          {authProfile === "starter" && <button className="secondary" disabled={busy} onClick={downloadSource}>Download synthetic intake source PDF</button>}
+          {authProfile !== "local" && <button className="secondary" disabled={busy} onClick={downloadSource}>Download synthetic intake source PDF</button>}
           <Documents ops={operations} /></>}
         {tab === "tasks" && <TaskPanel tasks={operations.tasks} reviewer={session.role === "reviewer"} busy={busy} onCreate={createTask} onUpdate={updateTask} />}
         {session.role === "reviewer" && <>
           {tab === "intake" && <section className="card"><div className="section-heading"><h2>Intake & Member 360</h2><button className="secondary" disabled={running || !!current.decision || !session.features.intake} onClick={() => run("intake")}>Run intake</button></div>
             <p>Plan {current.member360?.plan} · Coverage {current.member360?.coverage} · Values below 85% confidence require human verification.</p>
-            {authProfile === "starter" && <p>Authorized synthetic member record: {current.member360?.member_id}. Compare the source PDF before confirming any OCR correction.</p>}
+            {authProfile !== "local" && <p>Synthetic member record: {current.member360?.member_id}. Compare the source PDF before confirming any OCR correction.</p>}
             <div className="form-grid">{Object.entries(fields).map(([name, field]) => <label key={name}>{name.replaceAll("_", " ")}
-              <input value={field.value || ""} readOnly={name === "member_id" && authProfile !== "starter"} disabled={running || !!current.decision}
-                onChange={e => setFields(f => ({ ...f, [name]: { ...field, value: e.target.value || null, confidence: 1 } }))} />
+              {authProfile === "showcase" ? <select value={field.value || ""} disabled={running || !!current.decision}
+                onChange={e => setFields(f => ({ ...f, [name]: { ...field, value: e.target.value || null, confidence: 1 } }))}>
+                {!current.showcase_fields?.[name]?.includes(field.value || "") && <option value={field.value || ""} disabled>Verify OCR against a built-in value</option>}
+                {current.showcase_fields?.[name]?.map(value => <option key={value} value={value}>{value || "Missing / not provided"}</option>)}
+              </select> : <input value={field.value || ""} readOnly={name === "member_id" && authProfile !== "starter"} disabled={running || !!current.decision}
+                onChange={e => setFields(f => ({ ...f, [name]: { ...field, value: e.target.value || null, confidence: 1 } }))} />}
               <small className={field.confidence < .85 || !field.value ? "warning-text" : ""}>{Math.round(field.confidence * 100)}% confidence · {field.source}</small>
             </label>)}</div><button className="secondary" disabled={running || !!current.decision} onClick={verifyForm}>Confirm verified form fields</button>
             <details><summary>Prior therapy claims</summary>{current.member360?.claims.map(c => <p key={c.id}>{c.id} · {c.therapy} · {c.date}</p>)}</details>
@@ -413,23 +428,28 @@ export default function Workspace() {
               {current.brief.conflicts.length > 0 && <p className="warning-text">Conflicts: {current.brief.conflicts.join("; ")}</p>}
             </>}
           </section>}
-          {tab === "decision" && <section className="card decision"><p className="eyebrow">AUTHORIZED HUMAN CHECKPOINT</p><h2>Reviewer decision</h2>
+          {tab === "decision" && <section className="card decision"><p className="eyebrow">{authProfile === "showcase" ? "ANONYMOUS HUMAN DEMO ACTION" : "AUTHORIZED HUMAN CHECKPOINT"}</p><h2>Reviewer decision</h2>
             {current.decision ? <><p><strong>{current.decision.outcome}</strong> · {current.decision.reviewer} · {new Date(current.decision.timestamp).toLocaleString()}</p><p>{current.decision.reason}</p><small>Evidence brief v{current.decision.brief_version}. Saved decisions are immutable in this demo.</small></> : <>
               <p>Evidence states are not clinical outcomes. Review all gaps and conflicts before deciding.</p>
               <label>Outcome<select value={outcome} onChange={e => { setOutcome(e.target.value); decisionKey.current = null; }} disabled={running}>
                 <option value="information_requested">Request more information</option><option value="approved">Approve</option><option value="declined">Decline</option></select></label>
-              <label>Rationale<textarea value={reason} onChange={e => { setReason(e.target.value); decisionKey.current = null; }} minLength={10} maxLength={1000} disabled={running} /></label>
+              <label htmlFor="decision-reason">Rationale</label>{authProfile === "showcase" ? <select id="decision-reason" value={reason} disabled={running}
+                onChange={e => { setReason(e.target.value); decisionKey.current = null; }}>
+                <option value="">Choose a synthetic rationale</option>{reasons.map(value => <option key={value}>{value}</option>)}
+              </select> : <textarea id="decision-reason" value={reason} onChange={e => { setReason(e.target.value); decisionKey.current = null; }} minLength={10} maxLength={1000} disabled={running} />}
               <label className="checkbox"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} disabled={running} />I reviewed the current evidence and am explicitly recording this decision.</label>
               <button disabled={running || !current.brief || !confirmed || reason.trim().length < 10} onClick={saveDecision}>Record my decision</button>
             </>}
           </section>}
         </>}
         {tab === "status" && <section className="card"><p className="eyebrow">PLAIN LANGUAGE / MINIMUM NECESSARY</p><div className="section-heading"><h2>Case status & next step</h2><button className="secondary" disabled={busy} onClick={() => run("status")}>Run status check</button></div><p>{current.message}</p><p>Next owner: {current.next_owner}. No decision date is promised.</p>
+          {authProfile === "showcase" ? <><h3>Built-in synthetic communication preview</h3><p>{draft}</p>
+            <p className="small">Preview only: no free-text submission, saved outbox or external send in the public showcase.</p></> : <>
           <label>{current.missing_information_draft ? "Unsaved missing-information draft" : "Unsaved member-update draft"}<textarea value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} disabled={running} /></label>
           <label className="checkbox"><input type="checkbox" checked={sendConfirmed} onChange={e => setSendConfirmed(e.target.checked)} disabled={running} />Confirm this draft for the local outbox only.</label>
           <button className="secondary" disabled={running || !sendConfirmed || !draft.trim()} onClick={saveDraft}>Confirm local draft (no external send)</button>
           <div className="local-outbox"><h3>Your confirmed local drafts</h3><p className="small">Only drafts saved by your current persona are shown. No external delivery.</p>
-            {operations.outbox.length ? operations.outbox.map(d => <details key={d.id}><summary>Draft #{d.id} / {dateTime(d.created)}</summary><p>{d.text}</p></details>) : <p className="empty">No confirmed local drafts for this persona.</p>}</div>
+            {operations.outbox.length ? operations.outbox.map(d => <details key={d.id}><summary>Draft #{d.id} / {dateTime(d.created)}</summary><p>{d.text}</p></details>) : <p className="empty">No confirmed local drafts for this persona.</p>}</div></>}
         </section>}
         {tab === "activity" && <section className="card"><p className="eyebrow">PERSISTED, ROLE-FILTERED EVENTS</p><h2>Audit timeline</h2><ol className="timeline">{current.timeline.toReversed().map(t => <li key={t.id}><b>{t.event.replaceAll("_", " ")}</b>
           <small>{new Date(t.created).toLocaleString()}{t.actor && ` · ${t.actor}`} · trace {t.trace}</small></li>)}</ol></section>}
@@ -443,7 +463,7 @@ export default function Workspace() {
         {running && controller.current && <button className="secondary" onClick={() => controller.current?.abort()}>Cancel workflow</button>}
         <p className="small">Interrupted runs are never silently replayed. Refresh the case before retrying; streamed state is provisional.</p>
         {current && session.features.chat && <><button className="secondary" disabled={busy} onClick={toggleChat}>{showChat ? "Close chat" : "Open case-bound chat"}</button>
-          {showChat && <CaseChat key={`${session.id}-${current.id}`} caseId={current.id} />}</>}
+          {showChat && <CaseChat key={`${session.id}-${current.id}`} caseId={current.id} presetOnly={authProfile === "showcase"} />}</>}
       </aside>
     </div>}</>}
     <footer>BENEFITS IQ <span>Independent October SE Build demo · Synthetic fixtures · No production integrations</span></footer>

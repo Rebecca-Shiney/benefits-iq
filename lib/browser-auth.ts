@@ -5,6 +5,7 @@ import { z } from "zod";
 
 const Configuration = z.discriminatedUnion("profile", [
   z.object({ profile: z.literal("local") }),
+  z.object({ profile: z.literal("showcase") }),
   z.object({
     profile: z.literal("starter"), tenantId: z.uuid(), clientId: z.uuid(),
     scope: z.string().min(1), origin: z.url(),
@@ -18,7 +19,7 @@ export async function initializeAuth(): Promise<BrowserAuth> {
     const response = await fetch("/api/auth/config", { cache: "no-store" });
     if (!response.ok) throw new Error("AUTH_CONFIGURATION_UNAVAILABLE");
     const config = Configuration.parse(await response.json());
-    if (config.profile === "local") return { config, client: null };
+    if (config.profile !== "starter") return { config, client: null };
     if (config.origin !== window.location.origin) throw new Error("AUTH_ORIGIN_MISMATCH");
     const client = new PublicClientApplication({
       auth: {
@@ -59,7 +60,7 @@ export async function signOut() {
 
 export async function authorizationHeaders(): Promise<Record<string, string>> {
   const { config, client } = await initializeAuth();
-  if (config.profile === "local") return {};
+  if (config.profile !== "starter") return {};
   const account = client?.getActiveAccount();
   if (!client || !account) throw new Error("ENTRA_SIGN_IN_REQUIRED");
   const result = await client.acquireTokenSilent({ account, scopes: [config.scope] });

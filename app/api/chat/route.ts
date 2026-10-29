@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError, starterMode } from "@/lib/server";
+import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError, starterMode, showcaseMode, cloudMode } from "@/lib/server";
 import { readBoundedJson } from "@/lib/request-policy";
 import { ChatRequest, readChatEvents } from "@/lib/chat-protocol";
+import { prompts } from "@/agents/showcase-options.json";
 
 export async function POST(request: NextRequest) {
   const abort = new AbortController();
@@ -15,16 +16,20 @@ export async function POST(request: NextRequest) {
     if (input instanceof Response) return input;
     const parsed = ChatRequest.safeParse(input.value);
     if (!parsed.success) return safeError("INVALID_CHAT_REQUEST", 422);
+    if (showcaseMode() && (parsed.data.messages.length !== 1 || parsed.data.messages[0].role !== "user" ||
+        !prompts.includes(parsed.data.messages[0].content))) return safeError("PUBLIC_PRESET_CASE_CHAT_ONLY", 422);
     const headers = await serviceHeaders(user, caseId);
-    const signal = AbortSignal.any([request.signal, abort.signal, AbortSignal.timeout(180_000)]);
+    const signal = AbortSignal.any([request.signal, abort.signal, AbortSignal.timeout(showcaseMode() ? 95_000 : 180_000)]);
     const access = await fetch(`${serviceUrl()}/api/cases/${caseId}`, { headers, signal, cache: "no-store" });
     await access.body?.cancel();
     if (!access.ok) return safeError("CASE_ACCESS_DENIED", access.status);
-    const live = starterMode() || process.env.BENEFITS_MODE === "live";
+    const live = cloudMode() || process.env.BENEFITS_MODE === "live";
     const response = await fetch(`${serviceUrl()}/${live ? "ag-ui-live" : "ag-ui"}`, {
       method: "POST", headers: { ...headers, Accept: "text/event-stream" }, signal, cache: "no-store",
       body: JSON.stringify({
-        threadId: caseId, runId: crypto.randomUUID(), messages: parsed.data.messages,
+        threadId: caseId, runId: crypto.randomUUID(), messages: showcaseMode() ? [{
+          id: `${crypto.randomUUID()}-user`, role: "user", content: parsed.data.messages[0].content,
+        }] : parsed.data.messages,
         tools: [], context: [], state: {}, forwardedProps: {},
       }),
     });

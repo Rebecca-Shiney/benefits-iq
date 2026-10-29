@@ -79,6 +79,15 @@ def test_unsupported_profile_has_no_fixture_fallback(monkeypatch):
         profile.profile()
 
 
+def test_showcase_uses_cloud_store_without_weakening_authenticated_starter(monkeypatch):
+    monkeypatch.setenv("BENEFITS_PROFILE", "showcase")
+    assert profile.cloud() and profile.showcase() and not profile.starter()
+    verify = Mock()
+    monkeypatch.setattr(sql_store, "verify_schema", verify)
+    store.initialize()
+    verify.assert_called_once_with()
+
+
 def test_sql_rows_and_results_preserve_mapping_and_positional_access():
     cursor = Mock(description=[("id",), ("version",)])
     cursor.fetchone.return_value = ("SYN-CASE-001", 7)

@@ -5,7 +5,7 @@ import secrets
 from datetime import date, datetime, timedelta, timezone
 
 from . import domain
-from .profile import starter
+from .profile import cloud, showcase
 from .contracts import AssignmentInput, TaskInput, TaskUpdate
 from .fixtures import EMPLOYERS, TASKS
 from .store import audit, connection, now
@@ -134,7 +134,7 @@ def detail(identity, case_id):
                               "version": c["version"], "as_of": c["date"], "status": "conflict" if conflict else "reference",
                               "detail": c["therapy"] + ". Evidence of prior therapy only; not a payment or clinical outcome."}
                              for c in payload["claims"])
-            if starter():
+            if cloud():
                 for document in documents:
                     document["kind"] = "Azure SQL synthetic source"
                 documents[0]["detail"] = (
@@ -177,7 +177,8 @@ def create_task(identity, case_id, request: TaskInput):
         domain.load(db, identity, case_id)
         if identity.role != "reviewer" and definition["role"] != identity.role:
             domain.fail(403, "TASK_ROLE_DENIED")
-        duplicate = db.execute("SELECT id FROM tasks WHERE case_id=? AND kind=? AND state!='done'",
+        duplicate = db.execute("SELECT id FROM tasks WHERE case_id=? AND kind=?" +
+                               ("" if showcase() else " AND state!='done'"),
                                (case_id, request.kind)).fetchone()
         if duplicate:
             domain.fail(409, "OPEN_TASK_ALREADY_EXISTS")

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError, starterMode } from "@/lib/server";
+import { identity, sameOrigin, serviceHeaders, serviceUrl, safeError, starterMode, cloudMode } from "@/lib/server";
 import { readBoundedJson } from "@/lib/request-policy";
 
 async function handle(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
@@ -13,7 +13,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
     if (input instanceof Response) return input;
     const response = await fetch(`${serviceUrl()}/api/${path.join("/")}${request.nextUrl.search}`, {
       method: request.method, headers: await serviceHeaders(user), body: input.text,
-      signal: AbortSignal.any([request.signal, AbortSignal.timeout(starterMode() ? 180_000 : 60_000)]), cache: "no-store",
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(cloudMode() ? 180_000 : 60_000)]), cache: "no-store",
     });
     return new Response(response.body, {
       status: response.status,

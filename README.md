@@ -11,11 +11,13 @@ can record a clinical decision.
 
 ## Accelerator profiles and current status
 
-The approved accelerator now has a **synthetic-only Azure-native Starter**
-default and a separate **opt-in Enterprise integration** profile. This is a
+The approved accelerator now defaults to a **public, credential-free synthetic
+showcase** using Azure-native services. An authenticated Starter path is retained
+for future integration, and Enterprise integrations remain opt-in/planned. This is a
 deliberate change from the original guide: reduce tenant-admin onboarding and
 standing capacity cost, improve reuse and one-command setup, and retain core
-authentication, authorization, privacy, audit and human-decision controls.
+managed-identity service authentication, constrained demo views, audit and
+explicit human-action controls. Anonymous demo views are not authenticated roles.
 
 **Status: cloud implementation is in progress, not deployed or live-verified.**
 The working loopback demo below is unchanged in scope. `azd up` is the intended
@@ -26,31 +28,34 @@ integration success or healthcare-compliance claim is supplied.
 | Profile | Intended scope | Current implementation status |
 |---|---|---|
 | Local demo | Credential-free synthetic workflow, SQLite, deterministic MAF/AG-UI and explicit demo personas | Working local application; not Entra or cloud services |
-| Starter (default cloud) | Real Next.js/Python services, regional inference, governed Search, OCR and durable Azure SQL with managed identities | Runtime adapters and signed authentication paths implemented locally; IaC/bootstrap and live cloud proof remain unfinished |
+| Showcase (default cloud) | Public selectable synthetic views; real Next.js/Python, regional inference, governed Search, OCR and durable Azure SQL; exact managed-identity backend caller | Anonymous views, finite-input restrictions, signed caller validation and persistent budgets implemented/tested locally; IaC/bootstrap and live cloud proof remain unfinished |
+| Authenticated Starter (future opt-in) | Entra user roles/employer bindings plus managed-identity service calling | Retained signed-token/MSAL implementation and local tests; user registration/assignments/bootstrap and live verification are not implemented |
 | Enterprise (opt-in) | Actual Fabric/OneLake, aggregate-only employer semantic model, Purview and customer-specific policies | Planned integration profile only; not connected or verified |
 
-### Starter quickstart contract and minimal inputs
+### Showcase quickstart contract and minimal inputs
 
 Keep using the local quickstart below until the cloud entry point is implemented
-and validated. The intended Starter sequence is one-time interactive Azure/azd
+and validated. The intended showcase sequence is one-time interactive Azure/azd
 sign-in, confirmed subscription/Canadian region, then `azd up` from the repository
 root. Bootstrap must discover prerequisites with explicit errors, generate and
 connect the resources, initialize schema, seed only synthetic records/documents,
 populate Search and verify readiness. No hidden hand-seeding or source attachment
 is required. An ARM deployment alone will not count as a working accelerator.
 
-Minimum non-secret inputs are subscription, Canadian resource regions and
-approved Entra object-ID-to-role/employer bindings. Discover tenant/deployer
-context; generate resource/application IDs and configure redirects from the actual
-frontend URL rather than asking users to type every endpoint. Initial access is
-explicit and default-deny. One-time deployer sign-in, permission to create
-registrations and scoped role assignments, and applicable tenant consent policy
+Minimum non-secret inputs are subscription and Canadian resource regions.
+Discover tenant/deployer context; generate resource/application IDs and configure
+the frontend origin from its actual URL. Showcase needs no end-user registration,
+reviewer assignment, login or consent. It still needs an owned backend resource
+API registration for the managed-identity audience and app-only token claims,
+not an app registration for visitor sign-in. One-time deployer sign-in,
+permission to create that registration and scoped Azure role assignments,
+and applicable tenant policy
 cannot be bypassed by a deployment button. Missing permission must stop setup with
-an actionable error, not switch to demo identity or claim that a service is absent.
+an actionable error, not weaken service authentication or claim that a service is absent.
 
-| What Starter will create/connect | Placement / connection |
+| What the Azure-native showcase will create/connect | Placement / connection |
 |---|---|
-| Next.js frontend/runtime, internal Python API and setup job | Canada East Container Apps; frontend validates Entra user, backend independently checks user and managed-identity caller |
+| Next.js frontend/runtime, internal Python API and setup job | Canada East Container Apps; only frontend public, Python independently validates the exact managed-identity caller; single backend replica/worker bounds concurrent model runs |
 | ACR and separate managed identities | Canada East; admin/key credentials disabled, identity-based image pulls and data access |
 | Entra-only Azure SQL | Canada East; authoritative cases/tasks/briefs/decisions/audit plus versioned synthetic source rows, binary intake documents and separate aggregate snapshots |
 | Azure AI Search Basic | Canada East; versioned governed criteria populated from synthetic SQL sources, backend-enforced query scope |
@@ -74,10 +79,13 @@ than introducing a new storage account or capacity dependency.
 | SQL aggregate snapshots instead of a mandatory employer semantic model | Preserve scoped/suppressed portfolio output without a Fabric dependency | Seeded synthetic snapshot, not a live operational feed or semantic model |
 | Purview labels/customer governance move to Enterprise prerequisites | Avoid requiring label discovery/admin permissions for a strictly synthetic demo | No Purview labeling or enterprise-governance/compliance claim in Starter |
 | Governed Azure AI Search selected over IQ-branded retrieval | The guide permits a governed search/API alternative; use an explicit, testable service boundary | No claim that Foundry IQ, Work IQ or Web IQ is deployed |
-| Public SPA PKCE and managed-identity connections replace deployed demo credentials | No stored application client secret or browser-selected identity trust | Deployer sign-in, app registration rights and real user authorization still required |
+| User-approved public anonymous showcase replaces end-user sign-in as the default | Demonstrate each role-specific dashboard without visitor credentials or user-role assignment prerequisites | Anyone can select every view and perform enabled synthetic actions; no verified person, authenticated role isolation or healthcare-compliance claim. Authenticated Starter remains future work |
+| Exact managed-identity caller ACL replaces mandatory runtime app-role assignment for showcase | Supported resource-ACL authorization without storing secrets or requiring a user-role grant | One owned resource API registration and actual token/negative-path proof are still required; tenant/issuer/audience/app-only `azp` and principal `oid` remain mandatory |
+| Preset chat, form values and rationales; preview-only communications in showcase | Avoid accepting/persisting arbitrary visitor health text or exposing an open-ended model proxy | No freeform assistant conversation, arbitrary form correction or saved outbox in public mode; local/future authenticated paths retain their existing controls |
 | Canadian regional legacy model pinned explicitly | Preserve approved Canadian workload processing; avoid silent global inference | Migration must be verified/approved before reported **April 14, 2027** retirement |
 | First-party chat/proxy replaces CopilotKit UI/runtime and AG-UI JavaScript client | User-approved removal of vulnerable required Zod 3 paths without an unsafe cross-major override | We maintain the small chat UI/protocol reader; genuine Python MAF/AG-UI remains. CopilotKit can return after compatible patched releases are validated |
 | Bounded request/response parsing | Limit malformed/oversized input and sanitize streamed events independently of UI libraries | Limits, cancellation and protocol compatibility remain application responsibilities |
+| pytest patched from 9.0.2 to 9.0.3 | Resolve `CVE-2025-71176` / `GHSA-6w46-j5rx-g56g` without a cross-major override | Locked Python dependency audit is clean; this does not replace full built-image/OS scanning |
 
 ### Chat replacement and adding CopilotKit back
 
@@ -97,15 +105,19 @@ reply labels and in-memory context. Closing chat, changing case/persona or
 reloading clears it. No transcript/list/resume endpoint or automatic retry exists.
 Attachments, arbitrary frontend actions and autonomous decisions are not added.
 
-`app/api/chat/route.ts` independently authenticates the user, checks the selected
+`app/api/chat/route.ts` resolves the selected demo view (or independently
+authenticates the user in future authenticated Starter), checks the selected
 case through the backend, then forwards a server-built request to the genuine
-Python `/ag-ui` or `/ag-ui-live` endpoint. Starter keeps separate user/runtime
-Entra validation and managed-identity service calling. `lib/chat-protocol.ts`
+Python `/ag-ui` or `/ag-ui-live` endpoint. Showcase uses a managed-identity-only
+private backend; future authenticated Starter keeps separate user/runtime
+Entra validation. `lib/chat-protocol.ts`
 validates lifecycle ordering/case/run IDs and allowlisted read-only tool names.
 It forwards text and sanitized lifecycle events, never tool arguments/results,
 raw/custom events or state snapshots. Requests are bounded to 24,000 bytes;
 responses to 256 KiB, 2,048 events and 16,000 text characters, with bounded frames,
-tool/message counts and a three-minute server deadline. Disconnected runs are
+tool/message counts and a three-minute server deadline outside showcase.
+Showcase uses a 90-second Python run deadline and 95-second frontend deadline.
+Disconnected runs are
 not silently resumed; partial text is never marked complete.
 
 The tradeoff is that we maintain composer/history rendering, stream parsing,
@@ -125,10 +137,14 @@ surfaces must not move human decisions into chat or alter operational APIs.
 
 ### Implemented preparation versus deployment
 
-The Starter code now independently validates signed user and runtime tokens in
+The future authenticated Starter code independently validates signed user and runtime tokens in
 Python, validates user tokens again in Next.js, and uses an in-memory MSAL public
-client with the installed redirect bridge (`/auth`). Deployed-mode demo headers
-are ignored; missing configuration fails explicitly. Azure identity remains a
+client with the installed redirect bridge (`/auth`). Its demo headers are ignored;
+missing configuration fails explicitly. Showcase instead validates a signed
+app-only token's exact tenant/issuer/audience/lifetime, `idtyp=app`, absent `scp`,
+web managed-identity client ID (`azp`) and distinct principal ID (`oid`) in Python.
+No browser-supplied authorization or runtime-token header is forwarded.
+Azure identity remains a
 server-external Node dependency so its platform-specific credential helpers are
 not bundled by Turbopack.
 
@@ -149,13 +165,13 @@ definitions are `infra/Dockerfile.web` and `infra/Dockerfile.api`: official
 base-image manifests are digest-pinned, runtime users are non-root, and an
 allowlisted `.dockerignore` excludes local state, credentials and attachments.
 The API image installs Microsoft's official ODBC 18 package (accepting its EULA
-at build time), enforces Starter mode/tracing-off and formats library failures
+at build time), enforces cloud mode/tracing-off and formats library failures
 as metadata without raw provider messages or tracebacks. Operational error codes
 and traces remain observable.
 
 Docker is unavailable on the current host, so those images have **not** been
 built/run or remotely scanned. Full image/package validation must precede public
-exposure. Resource IaC, remote image build/push, Entra registration/role bootstrap,
+exposure. Resource IaC, remote image build/push, backend audience/Azure role bootstrap,
 setup-job orchestration and reproducible cloud readiness checks remain unfinished.
 The source/bootstrap implementation is `service/cloud_seed.py`: it generates
 original deterministic synthetic PDFs, inserts version/hash-checked SQL sources
@@ -167,43 +183,88 @@ broad database reader/writer roles. It uses the documented Azure SQL contained
 principal SID form, with the managed identity's **client ID**, avoiding directory
 lookup grants. These paths are locally tested, **not executed against Azure SQL
 or Search**; live principal/permission and rerun checks remain mandatory.
+`service/identity_probe.py` is the prepared first-stage cloud job command
+(`python -m service.identity_probe`): it requests a token using only the actual
+web managed identity, runs the same signature/claim validator and four negative
+checks, and emits no token. Its unit tests use signed synthetic tokens. It has
+**not** run in Azure and is not evidence that token issuance works yet.
 
-The user approved the verified signed-in deployment
-account as the initial `Benefits.Reviewer` for `SYN-EMP-A` only; no assignment
-has been created yet. All other users remain denied. Deployment rights are not
-automatic clinical access. `azd up` must not be presented as working, nor `/health` liveness as proof
-of ready cloud connections.
+The user explicitly superseded initial reviewer enrollment with a public
+showcase. No initial reviewer or Hira assignment is created or required.
+`azd up` must not be presented as working, nor `/health` liveness as proof of ready
+cloud connections. The role-less app-only caller path has signed-token tests,
+not live managed-identity issuance proof yet.
 
-**Collaborator onboarding:** sharing this GitHub repository does not grant
-dashboard or clinical access. Hira is not enrolled automatically. When access
-is requested, verify the person's object ID in the deployment's Entra tenant,
-obtain explicit role/employer approval, assign that application role and add the
-matching backend identity binding. Until both agree, access remains denied.
-The repeatable enrollment command is still being implemented with bootstrap;
-there is no working command to advertise yet.
+**Future collaborator onboarding:** GitHub access and application/clinical
+authorization are separate. The public showcase intentionally grants no
+verified-person identity: Hira, like anyone with the eventual URL, can select demo
+views without enrollment. For a future authenticated deployment, verify the
+person's tenant object ID, obtain explicit role/employer approval, assign the
+application role and matching backend binding; neither GitHub sharing nor a name
+performs that enrollment. No working enrollment command is advertised.
 
-The proposed Entra app-role assignment route is under review: read-only checks
-did not establish an active application-administrator role, but this is not a
-failed-write proof that all owned-app operations are impossible. A supported
-app-owned ACL alternative is being evaluated with the user; current deployed-mode
-code still requires signed Entra role claims. Neither an unapproved auth change
-nor a demo-identity fallback has been enabled.
+### Public showcase restrictions and shared state
+
+The public profile is `BENEFITS_PROFILE=showcase`, not the loopback launcher's
+`local` mode. Its unsigned, allowlisted persona cookie is a view preference,
+**not a credential**. Backend response shapes still exclude clinical details
+from the contact view and member details from employer aggregates, and constrain
+case/employer fixtures for each selected view. Anyone can choose a different
+view; these are not privacy boundaries between anonymous visitors.
+
+Both proxy and Python reject non-preset chat; only one canonical user question
+is sent, with server-generated IDs and no assistant/history/context/state/tools
+from the browser. The three prompts and synthetic rationales are in
+`agents/showcase-options.json`. Form corrections are restricted server-side to
+original built-in values and finite synthetic alternatives, with source/member
+checks. Search accepts only built-in case IDs. Communications are fixed previews;
+the save endpoint returns 403 in showcase. There are no upload, arbitrary remote
+URL fetch, external send or case-creation endpoints. Direct Python requests also
+enforce JSON-only bodies, compression rejection, a 24,000-byte body limit and a
+10-second read deadline, independently of Next.js.
+
+Public model quotas are **100 accepted runs/day and 5/minute globally**;
+workflow-write quotas are **300 POST attempts/day and 30/minute globally**.
+The two fixed SQL counter rows use transaction locks, survive process restarts,
+and reset by UTC day/minute without accumulating counter-history rows. Failed or
+cancelled accepted requests still consume their reservation. Each selected view
+also has a 120-call/minute in-process limit. A single backend replica/worker
+permits at most two model runs simultaneously; excess requests return 429.
+The installed MAF client uses `max_iterations=2`, `max_function_calls=3`,
+45-second best-effort tool-loop budgeting, non-concurrent tools and at most one
+invocation per read-only tool. Each model call is limited to 500 output tokens;
+inputs are fixed prompts/instructions and bounded seeded case-tool results.
+The SDK's loop/function limits are not a hard aggregate token or financial cap.
+No automatic retry, transcript retention or unrestricted model proxy is offered.
+
+Visitors share durable state and quotas. Any visitor can exhaust the allowance;
+there is no identity-based fairness guarantee. One task per case/kind and at most
+ten evidence briefs per case bound repeated creation; completed tasks cannot be
+duplicated. Explicit synthetic decisions remain immutable and record actors such
+as `anonymous-demo:reviewer-a`, **never a verified user**. A later visitor can see
+that a case has already been decided. There is no destructive automatic reset,
+new-case endpoint, saved freeform rationale or editable public outbox. Using a
+fresh dedicated demo environment is distinct from deleting/resetting existing
+records; destructive cleanup still requires approval.
 
 ### Security guarantees versus non-guarantees
 
-Both cloud profiles must retain backend-enforced role/employer/case isolation,
-explicit authorized human clinical decisions, durable audit, optimistic version
+All cloud paths retain backend-enforced response/case/employer constraints,
+explicit human decision actions, durable audit, optimistic version
 checks/idempotency and aggregate suppression. Managed identities, Entra data-plane
 permissions and short-lived tokens replace application keys/client secrets. No
 application secrets belong in `.env`, azd state, repo, images, logs or Key Vault as
 a workaround. Non-secret endpoints, public client IDs and approved object-ID
-bindings are configuration.
+bindings are configuration. In showcase, human actions are anonymous synthetic
+actions, not authorized clinical decisions by verified reviewers.
 
 This does **not** mean no credential ever exists: interactive deployer sign-in and
 short-lived CLI/azd token caches are unavoidable and distinct from persisted
 application credentials. SPA tokens should use memory caching; never expose
-service credentials to the browser. Deployed mode must disable demo persona
-authentication and must not silently fall back to SQLite or fixtures.
+service credentials to the browser. Showcase never uses the local HMAC/service
+secret, and its selector must not be described as authentication. Neither cloud
+profile silently falls back to SQLite, deterministic model responses or fake
+service success.
 
 Starter is **synthetic data only**. Do not enter real member/provider/employer or
 health information. It is not a healthcare-compliant production system, certified
@@ -464,7 +525,7 @@ $env:BENEFITS_TEST_URL = "http://127.0.0.1:3000"
 .\.venv\Scripts\python -m pytest -q tests\test_http_demo.py
 ```
 
-These nine HTTP checks are skipped when the URL is unset; the backend suite does
+These eleven HTTP checks are skipped when the URL is unset; the backend suite does
 not pretend that an in-process test proves a working Next.js runtime.
 
 For repeatable browser acceptance checks against the running demo:
@@ -487,6 +548,13 @@ corresponding audit history. Use a disposable demo DB for repeatable test runs;
 the browser checks never record a clinical decision. Optional
 `BENEFITS_SCREENSHOT_DIR` saves desktop/mobile captures in an existing local folder;
 otherwise that capture-only check is skipped. No screenshot is fabricated.
+`tests/browser/showcase.spec.ts` verifies the anonymous presentation, structured
+inputs and keyboard/preset/history behavior against a loopback backend with
+explicitly mocked profile presentation; it is not managed-identity/cloud proof.
+`tests/test_showcase.py` separately exercises signed caller JWTs, direct-route
+negative paths, persistent quotas, concurrency/cancellation/timeouts, bounded
+growth, anonymous human-action audit and the genuine MAF/AG-UI bridge with a
+deterministic test agent instead of claiming a live model call.
 
 Tests exercise the actual installed MAF bridge, all clinical outcomes, role and
 employer isolation, public-query privacy, uncertain extraction, claims conflicts,
@@ -524,7 +592,7 @@ against the installed Python bridge through real proxy/HTTP/browser workflows.
 - **Observability:** Sanitized activity names and trace IDs only. No raw tool
   arguments/results in the workflow stream, no browser payload logging, no health
   payloads in operational logs. Access logging and OTel are disabled by launcher.
-- **Limits:** 120 authenticated calls/minute/identity, bounded conversations,
+- **Limits (local):** 120 calls/minute/demo identity, bounded conversations,
   32,000-byte streamed JSON requests, 1,024-byte demo-session requests,
   compression rejection, a 10-second body-read timeout, bounded JSON collections,
   depth/nodes and 60-second workflow proxy timeout. The
@@ -550,9 +618,10 @@ against the installed Python bridge through real proxy/HTTP/browser workflows.
 
 ### External prerequisites deliberately not implemented as fake integrations
 
-Entra ID and service identity; managed keys; Fabric/OneLake member/claims
-connectors; Foundry IQ governed retrieval; live public-program sources; document
-OCR; Purview labeling/retention; Teams/email handoffs; approved external
+Live managed-identity issuance/data-plane connectivity, IaC/bootstrap and cloud
+acceptance remain unverified. Future Entra end-user enrollment, Fabric/OneLake
+member/claims connectors; Foundry IQ governed retrieval; live public-program
+sources; Purview labeling/retention; Teams/email handoffs; approved external
 communications; Canadian residency/private connectivity validation; multi-user
 production storage, migrations, retention/deletion and recovery operations.
 Thread persistence remains disabled until retention/privacy approval.
@@ -564,8 +633,9 @@ renewal authorization in the seed is not represented as a new agent decision.
 
 ## Design decisions
 
-1. **Runtime boundary:** Same-origin Next.js authenticates demo sessions and
-   delegates with a server-only credential; the Python service still checks access.
+1. **Runtime boundary:** Local Next.js uses an ephemeral server-only demo secret;
+   showcase selects anonymous views and delegates with its managed identity.
+   The private Python service independently validates its caller and view constraints.
 2. **SQLite:** Simple durable local transactions rather than an in-memory demo
    pretending to be an authoritative store. Production storage is separate work.
 3. **Controlled UI:** Known components and versioned activities, no generated HTML,

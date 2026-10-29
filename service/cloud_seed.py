@@ -175,7 +175,7 @@ def execute_batch(db, statement, params=()):
 
 
 def main():
-    if (os.environ.get("BENEFITS_PROFILE") != "starter"
+    if (os.environ.get("BENEFITS_PROFILE") not in {"starter", "showcase"}
             or os.environ.get("BENEFITS_SETUP_MODE") != "1"
             or os.environ.get("OTEL_SDK_DISABLED", "").lower() != "true"):
         raise RuntimeError("EXPLICIT_SYNTHETIC_STARTER_SETUP_REQUIRED")
@@ -183,11 +183,18 @@ def main():
     runtime = str(UUID(os.environ["BENEFITS_RUNTIME_SQL_CLIENT_ID"]))
     if runtime == os.environ["BENEFITS_MANAGED_IDENTITY_CLIENT_ID"].lower():
         raise RuntimeError("SEPARATE_SETUP_AND_RUNTIME_IDENTITIES_REQUIRED")
-    owners = json.loads(os.environ["BENEFITS_SEED_REVIEWER_OWNERS"])
+    from .profile import showcase
+    if showcase():
+        from .showcase import identities
+        approved = identities()
+        owners = {identity.employer: identity.id for identity in approved.values() if identity.role == "reviewer"}
+    else:
+        approved = EntraConfiguration.from_environment().identities
+        owners = json.loads(os.environ["BENEFITS_SEED_REVIEWER_OWNERS"])
     if not isinstance(owners, dict) or set(owners) - {"SYN-EMP-A", "SYN-EMP-B"}:
         raise RuntimeError("APPROVED_SEED_OWNERS_REQUIRED")
-    owners = {employer: str(UUID(owner)) for employer, owner in owners.items()}
-    approved = EntraConfiguration.from_environment().identities
+    if not showcase():
+        owners = {employer: str(UUID(owner)) for employer, owner in owners.items()}
     if any(owner not in approved or approved[owner].role != "reviewer" or approved[owner].employer != employer
            for employer, owner in owners.items()):
         raise RuntimeError("SEED_OWNER_NOT_AN_APPROVED_REVIEWER")

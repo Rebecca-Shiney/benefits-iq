@@ -18,21 +18,25 @@ from . import domain, operations
 from .agents import ConfiguredModelOrchestrator, SyntheticOrchestrator, request_context
 from .contracts import Activity, AssignmentInput, DecisionInput, DraftInput, FormInput, PublicQuery, RunRequest, TaskInput, TaskUpdate
 from .store import audit, connection, initialize, now
-from .profile import profile, starter
-from .entra_auth import EntraAuthError, EntraAuthenticator, EntraConfiguration
+from .profile import profile, cloud, showcase
+from .entra_auth import CallerConfiguration, EntraAuthError, EntraAuthenticator, EntraConfiguration, ManagedCallerAuthenticator
+from .showcase import OPTIONS, PublicBodyBoundary, reserve, selected_view
 from .cloud_errors import CloudServiceError, SqlStoreError
 from .cancellation import WorkflowCancellation, WorkflowCancelled, run_blocking
 
 
 logger = logging.getLogger("benefits")
+SHOWCASE_RUN_SECONDS = 90
 
 
 @asynccontextmanager
 async def lifespan(app):
-    if starter():
+    if cloud():
         if any(os.environ.get(name) for name in ("BENEFITS_SERVICE_SECRET", "OPENAI_API_KEY", "AZURE_CLIENT_SECRET")):
             raise RuntimeError("STARTER_DISALLOWS_STATIC_APPLICATION_CREDENTIALS")
-        app.state.entra = EntraAuthenticator(EntraConfiguration.from_environment())
+        app.state.entra = (ManagedCallerAuthenticator(CallerConfiguration.from_environment()) if showcase()
+                           else EntraAuthenticator(EntraConfiguration.from_environment()))
+        app.state.model_slots = asyncio.Semaphore(2)
         from .azure_services import validate_configuration
         validate_configuration()
     else:
@@ -45,6 +49,7 @@ async def lifespan(app):
 
 app = FastAPI(title="Benefits IQ synthetic capability API", version="1.0", lifespan=lifespan,
               docs_url=None, redoc_url=None, openapi_url=None)
+app.add_middleware(PublicBodyBoundary)
 requests_by_user: dict[str, deque] = defaultdict(deque)
 
 
@@ -59,7 +64,12 @@ def require_feature(feature: str):
 
 async def authenticate(request: Request, authorization: str = Header(""), x_benefits_user: str = Header(""),
                        x_benefits_runtime_authorization: str = Header("")):
-    if starter():
+    if showcase():
+        await asyncio.to_thread(request.app.state.entra.authenticate_caller, x_benefits_runtime_authorization)
+        identity = selected_view(x_benefits_user)
+        if identity is None:
+            domain.fail(401, "SYNTHETIC_VIEW_REQUIRED")
+    elif cloud():
         identity = await asyncio.to_thread(request.app.state.entra.authenticate,
                                           x_benefits_runtime_authorization, authorization)
     else:
@@ -76,6 +86,8 @@ async def authenticate(request: Request, authorization: str = Header(""), x_bene
     if len(recent) >= 120:
         domain.fail(429, "RATE_LIMIT_RETRY_LATER")
     recent.append(current)
+    if showcase() and request.method == "POST" and request.url.path.startswith("/api/"):
+        await run_blocking(reserve, "write")
     request.state.identity = identity
     return identity
 
@@ -124,7 +136,7 @@ def health():
 @app.get("/api/session")
 def session(identity=Depends(authenticate)):
     return {"id": identity.id, "role": identity.role, "employer": identity.employer,
-            "mode": "live" if starter() else os.environ.get("BENEFITS_MODE", "synthetic"),
+            "mode": "live" if cloud() else os.environ.get("BENEFITS_MODE", "synthetic"),
             "profile": profile(),
             "features": {f: enabled(f) for f in ("chat", "intake", "evidence", "renewal", "employer", "activities")}}
 
@@ -141,6 +153,8 @@ def workbench(search: str = Query("", max_length=100),
               owner: Literal["all", "mine", "unassigned"] = "all",
               sort: Literal["target", "oldest", "newest", "priority"] = "target",
               identity=Depends(authenticate)):
+    if showcase() and search and search not in {f"SYN-CASE-{i:03}" for i in range(1, 13)}:
+        domain.fail(422, "SHOWCASE_CASE_FILTER_ONLY")
     return operations.workbench(identity, search, state, priority, owner, sort)
 
 
@@ -173,7 +187,7 @@ def case(case_id: str, identity=Depends(authenticate)):
 def source_document(case_id: str, identity=Depends(authenticate)):
     with connection() as db:
         row = domain.load(db, identity, case_id, True)
-        if not starter():
+        if not cloud():
             domain.fail(404, "LOCAL_STRUCTURED_FIXTURE_ONLY")
         from .azure_services import intake_document
         document = intake_document(db, row)
@@ -200,6 +214,8 @@ def decision(case_id: str, body: DecisionInput, identity=Depends(authenticate)):
 
 @app.post("/api/cases/{case_id}/communication")
 def communication(case_id: str, body: DraftInput, identity=Depends(authenticate)):
+    if showcase():
+        domain.fail(403, "PUBLIC_SHOWCASE_DRAFTS_ARE_PREVIEW_ONLY")
     with connection() as db:
         domain.load(db, identity, case_id)
         db.execute("INSERT INTO communications(case_id,actor,text,created) VALUES(?,?,?,?)",
@@ -322,25 +338,56 @@ async def agent_auth(request: Request, identity=Depends(authenticate)):
         with connection() as db:
             domain.load(db, identity, case_id)
     await run_blocking(validate_case)
-    if starter() and request.url.path != "/ag-ui-live":
+    if cloud() and request.url.path != "/ag-ui-live":
         domain.fail(409, "STARTER_REQUIRES_MODEL_RUNTIME")
-    if not starter() and request.url.path == "/ag-ui-live" and (
+    if not cloud() and request.url.path == "/ag-ui-live" and (
         not os.environ.get("OPENAI_API_KEY") or not os.environ.get("OPENAI_MODEL")
     ):
         domain.fail(503, "LIVE_MODEL_NOT_CONFIGURED")
-    body = await request.json()
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        domain.fail(422, "INVALID_CHAT_REQUEST")
+    if not isinstance(body, dict):
+        domain.fail(422, "INVALID_CHAT_REQUEST")
     if body.get("tools") or body.get("state") or body.get("forwardedProps"):
         domain.fail(422, "CLIENT_TOOLS_AND_STATE_NOT_ACCEPTED")
     messages = body.get("messages", [])
+    if not isinstance(messages, list) or any(not isinstance(message, dict) for message in messages):
+        domain.fail(422, "INVALID_CHAT_REQUEST")
     if len(messages) > 40 or len(json.dumps(body)) > 24000:
         domain.fail(413, "CONVERSATION_LIMIT")
     if any(m.get("role") not in {"user", "assistant"} for m in messages):
         domain.fail(422, "UNTRUSTED_MESSAGE_ROLE")
+    if showcase() and (len(messages) != 1 or messages[0].get("role") != "user"
+                       or messages[0].get("content") not in OPTIONS["prompts"]
+                       or body.get("context") or body.get("threadId") != case_id
+                       or set(body) - {"threadId", "runId", "messages", "tools", "context", "state", "forwardedProps"}
+                       or set(messages[0]) != {"id", "role", "content"}):
+        domain.fail(422, "PUBLIC_PRESET_CASE_CHAT_ONLY")
+    slot = False
+    if showcase():
+        try:
+            await asyncio.wait_for(request.app.state.model_slots.acquire(), timeout=0.1)
+            slot = True
+        except TimeoutError:
+            domain.fail(429, "PUBLIC_MODEL_BUSY")
+        try:
+            await run_blocking(reserve, "model")
+        except BaseException:
+            request.app.state.model_slots.release()
+            raise
     token = request_context.set((identity, case_id))
     try:
-        yield
+        if showcase():
+            async with asyncio.timeout(SHOWCASE_RUN_SECONDS):
+                yield
+        else:
+            yield
     finally:
         request_context.reset(token)
+        if slot:
+            request.app.state.model_slots.release()
 
 
 add_agent_framework_fastapi_endpoint(

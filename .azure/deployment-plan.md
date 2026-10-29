@@ -55,6 +55,41 @@ allowance. Missing permissions remain explicit blockers.
 The original implementation and dashboard revision remain on the existing branch.
 Neither source attachment has been changed or committed.
 
+### Current showcase implementation evidence
+
+The explicit `showcase` profile now has anonymous allowlisted view selection,
+backend signed app-only caller validation (`idtyp`, absent `scp`, exact tenant,
+issuer, API audience, lifetime, distinct web client `azp` and principal `oid`),
+fixed-prompt/no-history chat, finite synthetic form/rationale values,
+preview-only communications and backend request-body boundaries. Authenticated
+Starter remains separate; no HMAC/service secret is used by cloud showcase.
+
+The two fixed SQL quota rows enforce global model reservations (100/day, 5/minute)
+and workflow POST reservations (300/day, 30/minute) with transaction locks.
+Deploy a single backend replica/worker for its two-stream semaphore. Python
+model deadline is 90 seconds; Next is 95 seconds. Installed MAF client
+`function_invocation_configuration` limits iterations to 2, functions to 3
+(SDK best effort), duration to 45 seconds (SDK best effort), serial tools,
+one invocation per tool and 500 output tokens per model call. No hard aggregate
+token/spend cap is claimed. Tasks are finite per case/kind, briefs capped at ten
+per case, decisions immutable and audit actors explicitly anonymous.
+
+Local evidence: 177 backend tests pass, 11 real-HTTP tests require a separately
+running preview, 21 request/protocol tests pass, production build/typecheck pass,
+full npm audit reports zero vulnerabilities, and 14 browser tests pass with one
+optional screenshot check skipped. Showcase browser presentation uses a clearly
+mocked cloud-profile response over the local backend; independent signed-token
+and direct-route negative tests do not represent live cloud proof. No public
+Azure URL or live managed-identity/model/storage connection is claimed.
+
+Read-only subscription recheck confirms the approved subscription/tenant remain
+enabled and the deployer has subscription Owner/User Access Administrator
+authority. This does not grant tenant-wide Entra consent or prove owned-app
+writes. Remaining work includes the resource API registration, phase-gated
+infrastructure/bootstrap, remote image build/validation, real MI claim proof,
+SQL/Search/OCR/model seeding/read-write acceptance and only then public exposure.
+No Azure write, resource provisioning or Fabric operation has occurred.
+
 ## 1. Goal and requirements
 
 Modernize the existing application into a reusable accelerator whose intended
@@ -63,7 +98,9 @@ not the loopback demo with different URLs.
 
 ### User-approved profiles and reason for the change
 
-**Starter is the default, strictly synthetic-data-only profile.** Use the
+**The public showcase is the default, strictly synthetic-data-only cloud profile.**
+Authenticated Starter is retained as a future opt-in path, not deployed or live-verified.
+Use the
 already planned Azure SQL database for versioned synthetic source records,
 binary synthetic intake documents and a separate sufficiently large synthetic
 aggregate snapshot, in addition to transactional case/audit storage. Separate
@@ -71,12 +108,16 @@ source read permissions/schema from workflow writes. This avoids adding a
 storage service, Fabric capacity or label-discovery permission to the minimum
 deployment. No healthcare-compliance claim or real health data is permitted.
 
-Starter must deploy actual Next.js/Python services, regional model inference,
+The showcase must deploy actual Next.js/Python services, regional model inference,
 governed Search, Document Intelligence OCR, durable SQL and privacy-safe
 server telemetry, using Entra/managed identities with no persisted application
-secrets. It retains backend role/employer/case isolation, human decisions,
+secrets. It retains backend response/employer/case constraints for each freely
+selectable anonymous view, explicit synthetic human actions,
 concurrency/idempotency and audit controls. Employer output uses authorized
 SQL aggregate snapshots and suppression, **not** a Fabric semantic model.
+Anonymous view selection is not authenticated role authorization or privacy
+between visitors. Initial reviewer enrollment and the pending end-user ACL
+investigation are superseded for showcase, not deployment prerequisites.
 
 **Enterprise is an opt-in integration profile, currently planned, not
 implemented.** It adds actual Fabric/OneLake sources, a separate employer
@@ -92,7 +133,7 @@ discovery and guide mapping below are Enterprise reference material only.
 
 | Starter resource / connection | Region / boundary |
 |---|---|
-| Public Next.js and internal Python Container Apps, setup job, ACR | Canada East; only frontend public, Entra required |
+| Public Next.js and internal Python Container Apps, setup job, ACR | Canada East; only frontend public, no visitor sign-in; exact managed-identity caller token required by private Python |
 | Entra-only Azure SQL | Canada East; versioned synthetic sources/documents, transactional case/audit, separate aggregate snapshot |
 | Azure AI Search Basic | Canada East; governed/versioned criteria, backend-enforced query filters |
 | Azure OpenAI | Canada East regional Standard `gpt-4.1-mini` `2025-04-14`; no Global/DataZone fallback |

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 from dataclasses import dataclass
@@ -69,7 +71,7 @@ class EntraConfiguration:
 
 
 class EntraAuthenticator:
-    def __init__(self, config: EntraConfiguration):
+    def __init__(self, config: EntraConfiguration | CallerConfiguration):
         self.config = config
         self.keys = jwt.PyJWKClient(
             f"https://login.microsoftonline.com/{config.tenant_id}/discovery/v2.0/keys",
@@ -100,6 +102,8 @@ class EntraAuthenticator:
             raise EntraAuthError("ENTRA_TOKEN_INVALID") from error
 
     def authenticate(self, runtime_authorization: str, user_authorization: str) -> Identity:
+        if not isinstance(self.config, EntraConfiguration):
+            raise EntraAuthError("USER_AUTH_NOT_CONFIGURED")
         caller = self._claims(runtime_authorization)
         caller_roles = caller.get("roles")
         if (caller.get("azp") != self.config.runtime_client_id or caller.get("scp")
@@ -116,3 +120,36 @@ class EntraAuthenticator:
         if identity is None or not isinstance(roles, list) or ROLE_CLAIMS[identity.role] not in roles:
             raise EntraAuthError("USER_ACCESS_NOT_ASSIGNED", 403)
         return identity
+
+
+@dataclass(frozen=True)
+class CallerConfiguration:
+    tenant_id: str
+    api_client_id: str
+    runtime_client_id: str
+    runtime_principal_id: str
+
+    @classmethod
+    def from_environment(cls):
+        try:
+            return cls(*(guid(os.environ[name]) for name in (
+                "BENEFITS_TENANT_ID", "BENEFITS_API_CLIENT_ID",
+                "BENEFITS_RUNTIME_CLIENT_ID", "BENEFITS_RUNTIME_PRINCIPAL_ID",
+            )))
+        except (KeyError, ValueError, TypeError) as error:
+            raise RuntimeError("SHOWCASE_CALLER_CONFIGURATION_REQUIRED") from error
+
+    @property
+    def issuer(self):
+        return f"https://login.microsoftonline.com/{self.tenant_id}/v2.0"
+
+
+class ManagedCallerAuthenticator(EntraAuthenticator):
+    def authenticate_caller(self, authorization):
+        if not isinstance(self.config, CallerConfiguration):
+            raise EntraAuthError("CALLER_ACL_NOT_CONFIGURED")
+        caller = self._claims(authorization)
+        if (caller.get("idtyp") != "app" or "scp" in caller
+                or caller.get("azp") != self.config.runtime_client_id
+                or caller.get("oid") != self.config.runtime_principal_id):
+            raise EntraAuthError("RUNTIME_IDENTITY_DENIED")

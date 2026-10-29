@@ -17,6 +17,7 @@ export type Brief = {
 export type Case = {
   id: string; state: string; version: number; message: string; next_owner: string; expiry: string | null;
   scenario?: string; member?: string;
+  showcase_fields?: Record<string, string[]>;
   missing_information_draft?: string | null;
   member360?: { name: string; member_id: string; plan: string; coverage: string; fields: Record<string, Field>; claims: { id: string; therapy: string; date: string }[] };
   brief?: Brief | null;
@@ -25,7 +26,7 @@ export type Case = {
   update_draft: string;
 };
 export type Session = { id: string; role: "reviewer" | "contact" | "employer"; employer: string; mode: string;
-  profile?: "local" | "starter";
+  profile?: "local" | "starter" | "showcase";
   features: Record<"chat" | "intake" | "evidence" | "renewal" | "employer" | "activities", boolean> };
 export type Aggregate = {
   dataset: string; as_of: string; suppression: string;

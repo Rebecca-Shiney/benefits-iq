@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { authorizationHeaders } from "@/lib/browser-auth";
 import { readChatEvents } from "@/lib/chat-protocol";
+import { prompts } from "@/agents/showcase-options.json";
 
 type Turn = { id: string; prompt: string; answer: string; status: "streaming" | "complete" | "failed" | "cancelled" };
 
-export function CaseChat({ caseId }: { caseId: string }) {
+export function CaseChat({ caseId, presetOnly = false }: { caseId: string; presetOnly?: boolean }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -15,6 +16,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const request = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const input = useRef<HTMLTextAreaElement>(null);
+  const preset = useRef<HTMLSelectElement>(null);
   const history = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
   useEffect(() => {
@@ -25,8 +27,8 @@ export function CaseChat({ caseId }: { caseId: string }) {
     if (nearBottom.current && history.current) history.current.scrollTop = history.current.scrollHeight;
   }, [turns, activity]);
   useEffect(() => {
-    if (!busy && turns.length) input.current?.focus();
-  }, [busy]);
+    if (!busy && turns.length) (presetOnly ? preset.current : input.current)?.focus();
+  }, [busy, presetOnly, turns.length]);
 
   async function send(text: string, retry = false) {
     if (request.current || !text.trim()) return;
@@ -41,7 +43,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
       if (mounted.current) setTurns(current => current.map(turn => turn.id === id ? { ...turn, ...patch } : turn));
     };
     try {
-      const messages = [...prior.flatMap(turn => [
+      const messages = [...(presetOnly ? [] : prior).flatMap(turn => [
         { id: `${turn.id}-user`, role: "user", content: turn.prompt },
         { id: `${turn.id}-assistant`, role: "assistant", content: turn.answer },
       ]), { id: `${id}-user`, role: "user", content: text }];
@@ -53,7 +55,8 @@ export function CaseChat({ caseId }: { caseId: string }) {
       });
       traceId = response.headers.get("x-benefits-trace") || "";
       if (!response.ok || !response.body) {
-        throw new Error(response.status === 401 ? "SIGN_IN_REQUIRED" : response.status === 403 ? "CASE_ACCESS_DENIED" : "CHAT_SERVICE_UNAVAILABLE");
+        throw new Error(response.status === 401 ? "SIGN_IN_REQUIRED" : response.status === 403 ? "CASE_ACCESS_DENIED" :
+          response.status === 429 ? "SHARED_DEMO_LIMIT" : "CHAT_SERVICE_UNAVAILABLE");
       }
       for await (const event of readChatEvents(response.body, caseId)) {
         if (abort.signal.aborted) throw new DOMException("Cancelled", "AbortError");
@@ -80,6 +83,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
           CONVERSATION_LIMIT_CLEAR_CHAT: "Conversation is too large. Clear chat before starting a new conversation.",
           SIGN_IN_REQUIRED: "Sign-in expired or unavailable. Sign in again before retrying chat.",
           CASE_ACCESS_DENIED: "Access to this case was denied. Refresh your workspace; retry only after access is restored.",
+          SHARED_DEMO_LIMIT: "The shared request limit or concurrency limit was reached. Try later; daily limits reset at UTC midnight.",
         };
         const code = failure instanceof Error && Object.hasOwn(messages, failure.message)
           ? messages[failure.message]
@@ -97,6 +101,7 @@ export function CaseChat({ caseId }: { caseId: string }) {
   const last = turns.at(-1);
   return <section className="case-chat" aria-label="Case-bound assistant chat">
     <p className="small">Synthetic evidence only. Read-only chat; decisions stay in the reviewer panel. Chat is kept only in this open panel and clears when closed or the case changes.</p>
+    {presetOnly && <p>No sensitive input. This public showcase accepts only the case-bound questions below, without sending conversation history.</p>}
     <div ref={history} className="chat-history" role="log" aria-label="Chat conversation" aria-live="off" tabIndex={0}
       onScroll={() => { const element = history.current; if (element) nearBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 60; }}>
       {!turns.length && <p>Ask about intake completeness, criteria evidence or case status.</p>}
@@ -110,16 +115,22 @@ export function CaseChat({ caseId }: { caseId: string }) {
     {error && <p role="alert">{error}</p>}
     <form onSubmit={submit}>
       <label htmlFor="case-chat-message">Case-bound chat message</label>
-      <textarea id="case-chat-message" ref={input} rows={3} maxLength={2000} value={prompt}
-        onChange={event => setPrompt(event.target.value)} disabled={busy} aria-describedby="chat-keyboard-help" />
-      <p id="chat-keyboard-help" className="small">Enter adds a line. Tab to Send message, then press Enter to send. Maximum 2,000 characters.</p>
+      {presetOnly ? <select id="case-chat-message" ref={preset} value={prompt} disabled={busy}
+        onChange={event => setPrompt(event.target.value)} aria-describedby="chat-keyboard-help">
+        <option value="">Choose a synthetic case question</option>
+        {prompts.map(value => <option key={value} value={value}>{value}</option>)}
+      </select> : <textarea id="case-chat-message" ref={input} rows={3} maxLength={2000} value={prompt}
+        onChange={event => setPrompt(event.target.value)} disabled={busy} aria-describedby="chat-keyboard-help" />}
+      <p id="chat-keyboard-help" className="small">{presetOnly ? "Choose a question, then activate Send message. No free-text input." :
+        "Enter adds a line. Tab to Send message, then press Enter to send. Maximum 2,000 characters."}</p>
       <div className="chat-actions">
         <button type="submit" disabled={busy || !prompt.trim()}>Send message</button>
         {busy && <button type="button" className="secondary" onClick={() => request.current?.abort()}>Cancel chat response</button>}
         {!busy && last && ["failed", "cancelled"].includes(last.status) &&
           <button type="button" className="secondary" onClick={() => void send(last.prompt, true)}>Retry last message</button>}
         <button type="button" className="secondary" disabled={busy || !turns.length} onClick={() => {
-          setTurns([]); setError(""); setActivity("Chat cleared. No conversation is stored on the server."); input.current?.focus();
+          setTurns([]); setError(""); setActivity("Chat cleared. No conversation is stored on the server.");
+          (presetOnly ? preset.current : input.current)?.focus();
         }}>Clear chat</button>
       </div>
     </form>

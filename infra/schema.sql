@@ -1,5 +1,12 @@
 SET XACT_ABORT ON;
 
+IF OBJECT_ID(N'dbo.showcase_usage', N'U') IS NULL
+CREATE TABLE dbo.showcase_usage(
+  name nvarchar(16) PRIMARY KEY CHECK(name IN ('model','write')),
+  day nvarchar(10) NOT NULL, day_count int NOT NULL CHECK(day_count>=0),
+  minute nvarchar(16) NOT NULL, minute_count int NOT NULL CHECK(minute_count>=0)
+);
+
 IF OBJECT_ID(N'dbo.schema_migrations', N'U') IS NULL
 CREATE TABLE dbo.schema_migrations(version int PRIMARY KEY, applied nvarchar(64) NOT NULL);
 

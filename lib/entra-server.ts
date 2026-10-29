@@ -18,9 +18,30 @@ let keys: ReturnType<typeof createRemoteJWKSet> | undefined;
 let credential: ManagedIdentityCredential | undefined;
 
 export function starterMode() {
+  return deploymentProfile() === "starter";
+}
+
+function deploymentProfile() {
   const profile = process.env.BENEFITS_PROFILE || "local";
-  if (profile !== "local" && profile !== "starter") throw new Error("PROFILE_NOT_IMPLEMENTED");
-  return profile === "starter";
+  if (!["local", "starter", "showcase"].includes(profile)) throw new Error("PROFILE_NOT_IMPLEMENTED");
+  return profile;
+}
+
+export function showcaseMode() {
+  return deploymentProfile() === "showcase";
+}
+
+export function cloudMode() {
+  return deploymentProfile() !== "local";
+}
+
+function callerConfiguration() {
+  const config = Configuration.omit({ spa: true, bindings: true }).parse({
+    tenant: process.env.BENEFITS_TENANT_ID, api: process.env.BENEFITS_API_CLIENT_ID,
+    runtime: process.env.BENEFITS_RUNTIME_CLIENT_ID, origin: process.env.BENEFITS_APP_ORIGIN,
+  });
+  if (new URL(config.origin).protocol !== "https:") throw new Error("HTTPS_APP_ORIGIN_REQUIRED");
+  return config;
 }
 
 export function entraConfiguration() {
@@ -70,7 +91,7 @@ export async function cloudIdentity(authorization: string): Promise<CloudIdentit
 }
 
 export async function runtimeAuthorization() {
-  const config = entraConfiguration();
+  const config = showcaseMode() ? callerConfiguration() : entraConfiguration();
   credential ??= new ManagedIdentityCredential({ clientId: config.runtime });
   const token = await credential.getToken(`api://${config.api}/.default`);
   if (!token) throw new Error("RUNTIME_TOKEN_UNAVAILABLE");
@@ -78,6 +99,10 @@ export async function runtimeAuthorization() {
 }
 
 export function publicAuthConfiguration() {
+  if (showcaseMode()) {
+    callerConfiguration();
+    return { profile: "showcase" as const };
+  }
   if (!starterMode()) return { profile: "local" as const };
   const config = entraConfiguration();
   return {

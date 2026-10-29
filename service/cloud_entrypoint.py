@@ -31,7 +31,7 @@ def logging_configuration():
 
 
 def main():
-    if os.environ.get("BENEFITS_PROFILE") != "starter":
+    if os.environ.get("BENEFITS_PROFILE") not in {"starter", "showcase"}:
         raise RuntimeError("CLOUD_ENTRYPOINT_REQUIRES_STARTER")
     if os.environ.get("OTEL_SDK_DISABLED", "").lower() != "true":
         raise RuntimeError("CLOUD_TRACING_MUST_BE_DISABLED")
