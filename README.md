@@ -41,6 +41,12 @@ closing restores the starting tab. No case is changed and no model call is made.
 The tour was deployed and verified in the public showcase on **October 30,
 2026**, including the contact-centre and employer views, mobile and keyboard use.
 
+The **Understand the use case** tab offers eight short explanations of the
+purpose, people, architecture, AI, future IQ options and security/demo limits.
+It is a read-only guide, separate from the click-by-click tour; returning to
+**Your dashboard** preserves the current view. This new tab is prepared in source,
+not yet deployed to the public showcase.
+
 1. Open **Clinical reviewer / Employer A**. Inspect case `SYN-CASE-001` and its
    versioned evidence, or `SYN-CASE-002` for an intake gap.
 2. Open **Evidence** to inspect citations. Chat can explain its permitted reads;

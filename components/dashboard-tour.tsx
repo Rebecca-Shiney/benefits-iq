@@ -39,6 +39,9 @@ function stepsFor(context: TourContext): Step[] {
     { target: "safety", title: "People decide. Agents prepare.", text: "The data is fictional. Agents help check and explain it; they do not make clinical decisions or send messages. This tour only points things out." },
     { target: "welcome", title: "Start with a workspace", text: "Close this guide, choose a view and open the workspace. Use the same guide button there for a walkthrough tailored to that dashboard." },
   ];
+  if (context.view === "use-case") return [workspace,
+    { target: "use-case", title: "Understand why this dashboard exists", text: "Read the short explanations of the use case, architecture, AI, future IQ integrations and demo limits. This guide is read-only; return to Your dashboard to continue working." },
+  ];
   if (context.role === "employer") return [workspace,
     { target: "portfolio", title: "See the group, not individual members", text: "These are fictional employer-level trends from a separate portfolio dataset. There is no employee drill-through, clinical case list or individual ranking." },
     { target: "suppression", title: "Small groups stay suppressed", text: "Suppressed values are intentionally hidden when a group is too small. Read the source and date here; these figures are not a live insurer feed." },

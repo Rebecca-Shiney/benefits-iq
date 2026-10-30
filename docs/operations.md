@@ -192,6 +192,13 @@ application access. No deletion or successful cleanup test is implied here.
 
 ## Local development
 
+**Understand the use case** is an optional read-only tab for all demo views.
+Its eight explanations describe the public synthetic showcase, not a live cloud
+connection in local mode or deployed enterprise IQ integrations. Use the tab keys
+or Left/Right/Home/End to switch sections; return to **Your dashboard** without
+resetting the selected case, case tab or unsaved fields. It performs no requests
+or workflow/model actions. The original palette and dashboard tour are unchanged.
+
 The **Get to know your dashboard** button starts an optional, role-specific
 walkthrough. Use Next/Back or the arrow keys, Escape/Close/Skip to leave, and the
 same button to restart. It skips unavailable sections and closes if the case,
