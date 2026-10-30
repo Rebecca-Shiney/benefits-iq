@@ -44,8 +44,9 @@ The tour was deployed and verified in the public showcase on **October 30,
 The **Understand the use case** tab offers eight short explanations of the
 purpose, people, architecture, AI, future IQ options and security/demo limits.
 It is a read-only guide, separate from the click-by-click tour; returning to
-**Your dashboard** preserves the current view. This new tab is prepared in source,
-not yet deployed to the public showcase.
+**Your dashboard** preserves the current view. The tab is deployed in the public
+showcase and was verified across reviewer, contact-centre and both employer views
+on **October 30, 2026**, including keyboard use and readable mobile reflow.
 
 1. Open **Clinical reviewer / Employer A**. Inspect case `SYN-CASE-001` and its
    versioned evidence, or `SYN-CASE-002` for an intake gap.
@@ -204,23 +205,26 @@ identity/image proof, before data/app services.
 
 ### What has actually been verified?
 
-The latest same-environment rollout completed on **October 30, 2026 at 15:22:07
-UTC**, from merged runtime source `132f707`. Real proofs cover MI issuance/denials,
+The latest same-environment rollout completed on **October 30, 2026 at 16:44:09
+UTC**, from merged runtime source `7e7971f` ([PR #4](https://github.com/Rebecca-Shiney/benefits-iq/pull/4)). Real proofs cover MI issuance/denials,
 private SQL access and permissions, seeding, Search, fresh OCR, durable evidence,
 and required-read-tool model streams before and after public exposure. Actual
-public browser checks verified the guided tour across reviewer/contact/employer
-views, Next/Back/Finish/close/restart, keyboard/mobile controls and unchanged
-case/audit snapshots with no write or chat request during tours.
+public browser checks verified the eight-card use-case guide across
+reviewer/contact/both employer views, keyboard/ARIA/tab restoration and tour
+compatibility. Every explanation fits two lines at desktop widths of 1280 and
+1600 pixels and reflows fully at mobile widths of 320 and 390 pixels. Guide/tour
+interactions issued no backend, chat or session requests; case/audit snapshots
+were unchanged. The earlier full role-specific tour proof remains recorded.
 Deployment/browser automation submitted **no clinical decision**.
 
-The tour revision passed **27 local browser checks** and **21 Node request/stream
+The guide revision passed **35 local browser checks** and **21 Node request/stream
 checks**, production build and typecheck. The fresh full npm audit reported
 **zero known vulnerabilities**; both actual final-image build/test/scan gates
 passed separately. The earlier full Python run recorded 295 passed / 11 optional
 local HTTP skips; it is not a new whole-suite run for this frontend change.
 These are dated observations, not a security or accessibility certification.
 Detailed receipts, digests and historical proof are in the
-[deployment evidence](.azure/deployment-plan.md#guided-tour-deployment-and-public-browser-acceptance-2026-10-30).
+[deployment evidence](.azure/deployment-plan.md#use-case-guide-deployment-and-public-browser-acceptance-2026-10-30).
 
 ## Safety and limitations
 

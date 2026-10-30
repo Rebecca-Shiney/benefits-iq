@@ -2,6 +2,29 @@
 
 ## Status and approval boundary
 
+**Validated and deployed: October 30 use-case-guide refresh.** The user explicitly
+approved merging and deploying reviewed source
+`527655873e5cbf0ec2593e919c4839bdca479171`. The existing staged Azure CLI/Bicep
+entry and retained `.azure/showcase-benefits-iq.json` remain authoritative.
+This refresh adds only the eight-card read-only guide, accessible tab/tour
+integration and related documentation/tests in the original design. No new
+environment, service, IQ/Fabric/Purview integration, authentication mode, region
+or destructive operation. Preserve all case/audit data and existing synthetic
+quotas/managed-identity/private SQL/Canadian inference controls. The approved
+standard managed-build residency exception is unchanged. The user approves the
+normal temporary private-ingress downtime while fresh image/MI/SQL/source/
+private-public acceptance gates run. The guide itself must issue no requests,
+writes, clinical decisions or model calls. All 35 local browser checks, 21 Node
+checks, production build and typecheck passed. The staged refresh completed at
+`2026-10-30T16:44:09Z`; actual public guide acceptance completed at
+`16:44:46Z`. Runtime source is PR #4 merge
+`7e7971f77a767d2d2d3d41c7e778e3f6452b9e55`. Frontend public, Python internal,
+SQL public access Disabled/Entra-only. Fresh image/MI/private SQL/source/real
+private-public model gates and guide browser proof passed. No clinical decision
+or guide-triggered request occurred. Exact fresh receipts are in Section 7 below.
+
+The last completed refresh is preserved as historical evidence:
+
 **Validated and deployed: October 30 guided-tour refresh.** The user approved
 integrating reviewed source `1a0a3ae792f99a7c9a17332cf2de2cdc7694c02e`
 into main and refreshing the existing public showcase, including the normal
@@ -805,6 +828,88 @@ accepted the allowance rather than a hard ceiling. Additional uptime/cleanup
 policies require owner approval. Starter never resumes or changes capacity.
 
 ## 7. Validation Proof
+
+### Use-case-guide deployment and public browser acceptance, 2026-10-30
+
+PR #4, <https://github.com/Rebecca-Shiney/benefits-iq/pull/4>, merged normally
+at `16:02:15Z`, source `7e7971f77a767d2d2d3d41c7e778e3f6452b9e55`.
+The normal retained-environment `scripts/deploy.py --deploy` entry completed
+successfully; final receipts were saved at `16:44:09Z`. No environment/service,
+authentication mode, Canadian region or IQ/Fabric integration was added.
+The standard managed-build worker-location exception remains unchanged.
+
+| Fresh gate | Actual result |
+|---|---|
+| API managed build | `cwk` Succeeded; `sha256:db5664096269fc02ec8210fb92f07d61d3330577e4b2561359aa888c9a086da7` |
+| Web managed build | `cwm` Succeeded; `sha256:8a25405976318ec7553d01a13805d8832d3264b0575e5fd58768f3ca93ae58fb` |
+| Both final-image scans | Exact-digest OS and language vulnerability/secret gates passed; no waiver |
+| MI caller | `p-biq-benefits-iq-bb2168f95c9d-0j0vjlo`: positive and four negative checks passed; no token exposed |
+| Private SQL | `n-q-biq-benefits-iq-bb2168f95c9d-gihb5j1`: private DNS/MI login passed, no schema mutation |
+| Preserving setup | `n-s-biq-benefits-iq-bb2168f95c9d-f72jjzr`: 17 sources, 12 PDFs, 3 criteria, 6 separate aggregate cells; existing cases/evidence/audits preserved |
+| Runtime sources | `n-r-biq-benefits-iq-bb2168f95c9d-6f14o62`: constrained SQL permissions, source binary, live scoped Search and fresh Document Intelligence passed; case not mutated |
+| Private acceptance | `n-v-biq-benefits-iq-bb2168f95c9d-gdiwv4r`: saved evidence and genuine required-case-tool model/AG-UI streaming passed |
+| Post-public acceptance | `n-v-biq-benefits-iq-bb2168f95c9d-8za5l6u`: repeated genuine model/tool/read-only/view/rejection checks passed |
+| Final hosting | Web `--0000015` public on the new web digest; API `--0000005` internal on the new API digest |
+| SQL readback | Public network Disabled, TLS 1.2, `azureADOnlyAuthentication=true` |
+| Lock | Released normally after success; retained environment state preserved |
+
+Both acceptance jobs report `private_cloud_acceptance_complete`; the separate
+saved keys/executions above distinguish pre-public and post-public runs.
+Both record `clinical_decision_submitted=false` and
+`workflow_write_exercised=false`. Deployment model checks are real model calls;
+they are separate from the guide's zero-request proof.
+
+Actual public browser acceptance completed at `16:44:46Z` against the real
+HTTPS showcase, not the local preview. Reviewer A, contact A and both employers
+display the same eight exact non-personal explanations. At 1280/1600 desktop
+width every explanation is two lines; at 320/390 mobile widths all copy reflows
+without clipping or horizontal overflow. Arrow/Home/End selection, roving
+focus, ARIA labels, retained case/Documents tab and original eight-step reviewer
+tour passed. The guide's two-step tour passed Next/Back/Finish/Escape/restart and
+focus restoration for all four views. No page errors or backend/chat/session
+requests occurred during guide/tour interactions. Reviewer case and operations/
+audit snapshots remained identical. No decision or model call was triggered
+by the guide, and no IQ deployment is claimed.
+
+Local generated public proof artifacts are
+`files/use-case-review/cloud-use-case-acceptance.json`,
+`cloud-use-case-desktop.png` and `cloud-use-case-mobile.png` in the producing
+session Library, not copied member records or source attachments in Git.
+Ready shared browser: `benefits-iq-cloud-use-case`, guide selected.
+
+Live role readback used `az role assignment list --assignee-object-id <identity>
+--all` for each retained identity. Web has only registry-scoped AcrPull.
+API has registry AcrPull, Search Index Data Reader, Document Intelligence
+Cognitive Services User and regional OpenAI User at their exact resources.
+Setup retains registry AcrPull and Search Service Contributor/Index Data
+Contributor; separately documented SQL bootstrap access is unchanged.
+No subscription-wide application role, new end-user permission or secret was
+introduced. These are actual role readbacks plus execution proofs, not a
+claim that the what-if Unsupported role entries proved authorization.
+
+### Use-case-guide refresh prerequisite validation, 2026-10-30 UTC
+
+Reviewed guide source `527655873e5cbf0ec2593e919c4839bdca479171`
+was merged normally through PR #4 as
+`7e7971f77a767d2d2d3d41c7e778e3f6452b9e55`. The merge has the exact
+reviewed runtime/test tree. No workflow/ruleset or required check was present;
+no policy bypass, own approval, force push or branch deletion was used.
+
+- [x] All prerequisite validation checks pass for this same-environment refresh:
+  - [x] Azure CLI/authentication: exact retained enabled subscription/tenant, interactive user, containerapp extension, ownership tags, existing scanner and no competing lock verified.
+  - [x] Bicep compilation and policy: the normal read-only preflight completed; all five templates compiled, ancestor-inclusive policy discovery passed, and SQL remains unconditionally private-only with no firewall rule.
+  - [x] Provider validation: fresh foundation/data/network/private API/private web `az deployment ... validate --validation-level Provider` calls all Succeeded, errors null.
+  - [x] What-if: all five corresponding Provider previews Succeeded with no Delete. Three foundation role-ID Unsupported entries are still preview limitations, not live role proof. Generated local evidence `.azure/guide-validation-20261030.json` completed `2026-10-30T16:06:46Z`.
+  - [x] Build/source verification: the reviewed source's production bundle was built at `15:42:28Z`; the merge's app/dependency tree is byte-identical and all eight guide browser tests passed again against that real running bundle. Keep the approved review preview running until cloud acceptance rather than rebuild its active `.next` directory. All 35 browser tests previously passed on this exact source. Fresh typecheck and 21 Node request/stream checks passed.
+  - [x] Dependency/build route: fresh full `npm audit` reported zero known vulnerabilities. No lockfile, Dockerfile, backend or infrastructure change. Allowlisted committed TSX/CSS includes the guide. Standard ACR managed builds/final exact-digest scans remain mandatory execution gates, not a claimed local Docker result.
+  - [x] Static roles: unchanged resource-scoped web/API/setup AcrPull; API Search read/OCR/OpenAI data roles; setup scoped Search maintenance and existing SQL bootstrap access; constrained runtime SQL principal and exact MI caller ACL. No web data role or new tenant permission.
+
+The Validated status covers prerequisites, not completed cloud deployment.
+The next step must use the existing staged full entry, temporarily private
+frontend, both fresh images/scans and every live identity/data/model acceptance
+gate. Preserve existing source hashes, case versions, clinical decisions and
+audit history. Real public guide acceptance and updated README follow only on
+success. The guide itself must not issue requests or model/workflow actions.
 
 ### Guided-tour refresh prerequisite validation, 2026-10-30 UTC
 
