@@ -2,6 +2,23 @@
 
 ## Status and approval boundary
 
+**Ready for Validation: October 30 guided-tour refresh.** The user approved
+integrating reviewed source `1a0a3ae792f99a7c9a17332cf2de2cdc7694c02e`
+into main and refreshing the existing public showcase, including the normal
+temporary private-ingress downtime. This is a frontend tour/documentation
+change only: no new environment, paid service, authentication mode, data source,
+region, Fabric operation or destructive cleanup. Preserve the retained
+`.azure/showcase-benefits-iq.json`, existing resource ownership and cloud case/audit
+records. The tour itself must not write cases, submit decisions, send messages
+or invoke a model. Rebuild/scan and repeat the existing MI/private SQL/source/
+private-public acceptance gates before reopening frontend ingress; then verify
+the actual public role-aware tour and record dated evidence. Until those gates
+pass, the tour is prepared locally, not deployed. Local production build,
+typecheck, 27 browser checks and 21 request/stream checks passed; no new
+dependencies were added and the package audit reported zero known advisories.
+
+The following is the last completed rollout, retained as historical evidence:
+
 **Validated and deployed: the stricter required-read-tool revision completed all image/private/public gates at 2026-10-29T18:17:51Z, followed by actual public browser acceptance. Only Next.js ingress is public; Python is internal and SQL PNA remains Disabled/Entra-only. Genuine Canadian model/tool streaming, scoped Search/fresh OCR, SQL permissions and preserved synthetic workflow evidence are verified. No clinical decision was submitted by deployment/browser automation. Enterprise and end-user authenticated profiles remain future opt-in, not deployed integrations. No Fabric change, policy bypass or deletion occurred.**
 
 The user explicitly superseded end-user sign-in with credential-free selectable

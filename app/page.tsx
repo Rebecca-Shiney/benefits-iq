@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CaseChat } from "@/components/case-chat";
+import { DashboardTour } from "@/components/dashboard-tour";
 import { ActivitySchema, api, type Aggregate, type Case, type CaseOperations, type Field, type Session, type Task, type TaskKind, type Workbench } from "@/lib/contracts";
 import { dateTime, Documents, label, Metrics, Overview, TaskPanel } from "@/components/operations";
 import { authorizationHeaders, initializeAuth, signIn, signOut } from "@/lib/browser-auth";
@@ -304,6 +305,11 @@ export default function Workspace() {
   return <main className={session ? "dashboard" : ""}>
     <header className="topbar"><a className="brand" href="/">B<span>IQ</span><small>BENEFITS IQ</small></a>
       <div className="header-note">BENEFITS OPERATIONS <span>/</span> HUMAN-LED REVIEW</div>
+      <DashboardTour context={{
+        session: session?.id || null, role: session?.role || null, demo: authProfile !== "starter",
+        view, tab, caseId: !opening && operations ? current?.id || null : null, busy, ready: authProfile !== null,
+        chat: !!session?.features.chat, intake: !!session?.features.intake, evidence: !!session?.features.evidence, renewal: !!session?.features.renewal,
+      }} onNavigate={setTab} />
       <span className="pill synthetic">SYNTHETIC DATA ONLY</span>
     </header>
     {authProfile === "showcase" && <section className="safety-strip" aria-label="Public showcase limitations">
@@ -314,7 +320,7 @@ export default function Workspace() {
     {!session && <div className="hero"><div><p className="eyebrow">CLARITY FOR EVERY CASE</p>
       <h1>Better evidence.<br /><span>Human decisions.</span></h1>
       <p className="subtitle">A governed workspace for special authorization and Member 360.</p></div>
-      <section className="session-card" aria-label={authProfile === "starter" ? "Microsoft Entra sign-in" : "Local demo session"}>
+      <section className="session-card" data-tour="workspace" aria-label={authProfile === "starter" ? "Microsoft Entra sign-in" : "Local demo session"}>
         {authProfile !== null && authProfile !== "starter" && <><label htmlFor="persona">{authProfile === "showcase" ? "PUBLIC DEMO VIEW" : "LOCAL DEMO PERSONA"}</label>
         <select id="persona" value={selectedUser} disabled={running} onChange={e => setSelectedUser(e.target.value)}>
           {personas.map(([id, label]) => <option value={id} key={id}>{label}</option>)}
@@ -327,46 +333,46 @@ export default function Workspace() {
     {session && <div className="dashboard-heading"><div><p className="eyebrow">BENEFITS OPERATIONS / {workbench?.employer.name || session.employer}</p>
       <h1>{session.role === "reviewer" ? "Review desk" : session.role === "contact" ? "Member support" : "Employer portfolio"}</h1>
       <p>{session.role === "employer" ? "Fictional group-level trends. No employee drill-through." : "A clear view of your workload, evidence and next handoff."}</p></div>
-      {authProfile === "starter" ? <div className="persona-switch"><button className="secondary" disabled={busy} onClick={login}>Sign in again</button>
+      {authProfile === "starter" ? <div className="persona-switch" data-tour="workspace"><button className="secondary" disabled={busy} onClick={login}>Sign in again</button>
         <button className="secondary" disabled={busy} onClick={logout}>Sign out</button></div> :
-      <div className="persona-switch"><label htmlFor="persona">Demo workspace<select id="persona" value={selectedUser} disabled={busy} onChange={e => setSelectedUser(e.target.value)}>
+      <div className="persona-switch" data-tour="workspace"><label htmlFor="persona">Demo workspace<select id="persona" value={selectedUser} disabled={busy} onChange={e => setSelectedUser(e.target.value)}>
         {personas.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select></label>
         <button className="secondary" disabled={busy} onClick={login}>Switch workspace</button></div>}
     </div>}
-    <div className="safety-strip"><span className="dot" /><strong>People decide. Agents prepare.</strong>
+    <div className="safety-strip" data-tour="safety"><span className="dot" /><strong>People decide. Agents prepare.</strong>
       <span>No autonomous clinical decisions, real health data or external sends.</span></div>
     {error && <div role="alert" className="error">{error} {session && <button disabled={busy} onClick={reload}>Refresh case</button>}</div>}
     {notice && <p role="status" className="notice">{notice}</p>}
-    {!session && <section className="welcome card"><p className="eyebrow">YOUR REVIEW DESK, CONNECTED</p><h2>One case. Every relevant source.</h2>
+    {!session && <section className="welcome card" data-tour="welcome"><p className="eyebrow">YOUR REVIEW DESK, CONNECTED</p><h2>One case. Every relevant source.</h2>
       <p>{authProfile === "starter" ? "Sign in to your approved synthetic-data role to explore intake, cited evidence and human checkpoints." : "Choose a synthetic persona to explore intake, cited evidence, human checkpoints and role-safe updates."}</p>
       <div className="welcome-grid"><div><b>01</b><h3>Check completeness</h3><p>Uncertain fields stay uncertain.</p></div>
         <div><b>02</b><h3>Prepare evidence</h3><p>Versioned sources, explicit gaps.</p></div><div><b>03</b><h3>Decide with context</h3><p>Your decision. Recorded and traceable.</p></div></div></section>}
     {session && <div className="workspace-meta"><strong>{session.role === "reviewer" ? "Clinical review workspace" : session.role === "contact" ? "Contact centre" : "Employer insights"}</strong>
       <span>{session.id} / {session.employer} / {session.profile !== "local" && session.profile ? "Azure-native synthetic sources / regional model" : session.mode === "live" ? "Configured model chat" : "Deterministic synthetic agents"}</span></div>}
-    {aggregate && <section className="card"><p className="eyebrow">PORTFOLIO VIEW / AGGREGATES ONLY</p><h2>Specialty utilization trends</h2>
+    {aggregate && <section className="card" data-tour="portfolio"><p className="eyebrow">PORTFOLIO VIEW / AGGREGATES ONLY</p><h2>Specialty utilization trends</h2>
       <p>This separate fictional portfolio is not computed from the individual workflow members.</p>
       <div className="trend-grid">{aggregate.rows.map(r => <article className="trend" key={r.period}><h3>{r.period}</h3>
         <strong>{r.members ?? "Suppressed"}</strong><p>covered members</p><p>{r.specialty_utilizers ?? "Suppressed"} specialty utilizers</p>
         <p>{r.cost === null ? "Suppressed" : `$${r.cost.toLocaleString()}`} synthetic cost</p></article>)}</div>
-      <p>{aggregate.suppression}</p><small>Source: {aggregate.dataset} · {aggregate.as_of}. No causal conclusions or employee rankings.</small></section>}
+      <p data-tour="suppression">{aggregate.suppression}</p><small>Source: {aggregate.dataset} · {aggregate.as_of}. No causal conclusions or employee rankings.</small></section>}
     {session && session.role !== "employer" && <>
       {workbench && <Metrics data={workbench} />}<div className="data-note"><span>{workbench ? `Snapshot ${dateTime(workbench.as_of)} · ${workbench.employer.id} · ${authProfile === "showcase" ? "Selected synthetic group, not authenticated access" : "Only your authorized group"}` : "No operational snapshot available."}</span>
         <button className="text-button" disabled={busy} onClick={reload}>Refresh data</button></div>
-      <nav className="workbench-nav" aria-label="Operations views">
+      <nav className="workbench-nav" data-tour="operations-nav" aria-label="Operations views">
         <button aria-current={view === "cases" ? "page" : undefined} disabled={busy} onClick={() => setView("cases")}>Case queue <span>{workbench?.summary.total ?? "—"}</span></button>
         <button aria-current={view === "tasks" ? "page" : undefined} disabled={busy} onClick={() => setView("tasks")}>Team tasks <span>{workbench?.summary.open_tasks ?? "—"}</span></button>
         {session.role === "reviewer" && session.features.renewal && <button aria-current={view === "renewals" ? "page" : undefined} disabled={busy} onClick={() => setView("renewals")}>Renewal watch <span>{renewals.length}</span></button>}
       </nav>
-      {view === "tasks" && <section className="card team-board"><p className="eyebrow">ROLE-SAFE WORK PLAN</p><h2>Team tasks</h2><p>Open a case to manage the handoff. Internal clinical tasks are excluded from contact-centre responses.</p>
+      {view === "tasks" && <section className="card team-board" data-tour="team-tasks"><p className="eyebrow">ROLE-SAFE WORK PLAN</p><h2>Team tasks</h2><p>Open a case to manage the handoff. Internal clinical tasks are excluded from contact-centre responses.</p>
         {workbench?.tasks.length ? <div className="table-scroll"><table><thead><tr><th>Task / case</th><th>Responsible team</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody>
           {workbench.tasks.map(t => <tr key={t.id}><td><strong>{t.title}</strong><small className="block">{t.case_id}</small></td><td>{t.team}</td><td>{dateTime(t.due)}</td><td><span className={`state ${t.state}`}>{label(t.state)}</span></td>
             <td><button className="secondary" disabled={busy} onClick={() => navigateCase(t.case_id, "tasks")}>Open case</button></td></tr>)}</tbody></table></div> : <p className="empty">No team tasks visible to your role.</p>}</section>}
-      {view === "renewals" && <section className="card"><p className="eyebrow">PREPARATION, NOT AUTO-RENEWAL</p><h2>Renewal watch / next 30 days</h2><p>Recorded expiries from your authorized group. Opening a renewal does not extend coverage.</p>
+      {view === "renewals" && <section className="card" data-tour="renewals"><p className="eyebrow">PREPARATION, NOT AUTO-RENEWAL</p><h2>Renewal watch / next 30 days</h2><p>Recorded expiries from your authorized group. Opening a renewal does not extend coverage.</p>
         <div className="renewal-grid">{renewals.map(r => <article className="renewal-item" key={r.id}><span className="state due_soon">Expires {r.expiry}</span><h3>{r.id}</h3><p>{r.draft}</p>
           <button className="secondary" disabled={busy} onClick={() => navigateCase(r.id)}>Open renewal</button></article>)}</div>
         {!renewals.length && <p className="empty">No authorized renewals fall in this 30-day window.</p>}</section>}
       {view === "cases" && <div className="operations-layout">
-      <aside className="queue card operational-queue" aria-busy={queueLoading}><div className="section-heading"><div><p className="eyebrow">YOUR AUTHORIZED GROUP</p><h2>Case queue</h2></div><span className="count">{workbench?.matched ?? "—"}</span></div>
+      <aside className="queue card operational-queue" data-tour="queue" aria-busy={queueLoading}><div className="section-heading"><div><p className="eyebrow">YOUR AUTHORIZED GROUP</p><h2>Case queue</h2></div><span className="count">{workbench?.matched ?? "—"}</span></div>
         <label className="sr-only" htmlFor="filter">Search cases</label>{authProfile === "showcase" ?
           <select id="filter" value={filter} disabled={busy} onChange={e => setFilter(e.target.value)}>
             <option value="">All synthetic cases in this view</option>
@@ -402,7 +408,7 @@ export default function Workspace() {
           <Documents ops={operations} /></>}
         {tab === "tasks" && <TaskPanel tasks={operations.tasks} reviewer={session.role === "reviewer"} busy={busy} onCreate={createTask} onUpdate={updateTask} />}
         {session.role === "reviewer" && <>
-          {tab === "intake" && <section className="card"><div className="section-heading"><h2>Intake & Member 360</h2><button className="secondary" disabled={running || !!current.decision || !session.features.intake} onClick={() => run("intake")}>Run intake</button></div>
+          {tab === "intake" && <section className="card" data-tour="intake"><div className="section-heading"><h2>Intake & Member 360</h2><button className="secondary" disabled={running || !!current.decision || !session.features.intake} onClick={() => run("intake")}>Run intake</button></div>
             <p>Plan {current.member360?.plan} · Coverage {current.member360?.coverage} · Values below 85% confidence require human verification.</p>
             {authProfile !== "local" && <p>Synthetic member record: {current.member360?.member_id}. Compare the source PDF before confirming any OCR correction.</p>}
             <div className="form-grid">{Object.entries(fields).map(([name, field]) => <label key={name}>{name.replaceAll("_", " ")}
@@ -416,7 +422,7 @@ export default function Workspace() {
             </label>)}</div><button className="secondary" disabled={running || !!current.decision} onClick={verifyForm}>Confirm verified form fields</button>
             <details><summary>Prior therapy claims</summary>{current.member360?.claims.map(c => <p key={c.id}>{c.id} · {c.therapy} · {c.date}</p>)}</details>
           </section>}
-          {tab === "evidence" && <section className="card"><div className="section-heading"><div><p className="eyebrow">GROUNDED, NOT DECIDED</p><h2>Criteria evidence matrix</h2></div>
+          {tab === "evidence" && <section className="card" data-tour="evidence"><div className="section-heading"><div><p className="eyebrow">GROUNDED, NOT DECIDED</p><h2>Criteria evidence matrix</h2></div>
             <button disabled={running || !!current.decision || !session.features.evidence} onClick={() => run("evidence")}>Prepare evidence</button></div>
             {!current.brief ? <p className="empty">Prepare a brief to see versioned citations, gaps and conflicts.</p> : <>
               <p>Brief v{current.brief.version} · Criteria {current.brief.criteria_version || "SOURCE GAP"} · Deterministic synthetic preparation</p>
@@ -428,7 +434,7 @@ export default function Workspace() {
               {current.brief.conflicts.length > 0 && <p className="warning-text">Conflicts: {current.brief.conflicts.join("; ")}</p>}
             </>}
           </section>}
-          {tab === "decision" && <section className="card decision"><p className="eyebrow">{authProfile === "showcase" ? "ANONYMOUS HUMAN DEMO ACTION" : "AUTHORIZED HUMAN CHECKPOINT"}</p><h2>Reviewer decision</h2>
+          {tab === "decision" && <section className="card decision" data-tour="decision"><p className="eyebrow">{authProfile === "showcase" ? "ANONYMOUS HUMAN DEMO ACTION" : "AUTHORIZED HUMAN CHECKPOINT"}</p><h2>Reviewer decision</h2>
             {current.decision ? <><p><strong>{current.decision.outcome}</strong> · {current.decision.reviewer} · {new Date(current.decision.timestamp).toLocaleString()}</p><p>{current.decision.reason}</p><small>Evidence brief v{current.decision.brief_version}. Saved decisions are immutable in this demo.</small></> : <>
               <p>Evidence states are not clinical outcomes. Review all gaps and conflicts before deciding.</p>
               <label>Outcome<select value={outcome} onChange={e => { setOutcome(e.target.value); decisionKey.current = null; }} disabled={running}>
@@ -442,7 +448,7 @@ export default function Workspace() {
             </>}
           </section>}
         </>}
-        {tab === "status" && <section className="card"><p className="eyebrow">PLAIN LANGUAGE / MINIMUM NECESSARY</p><div className="section-heading"><h2>Case status & next step</h2><button className="secondary" disabled={busy} onClick={() => run("status")}>Run status check</button></div><p>{current.message}</p><p>Next owner: {current.next_owner}. No decision date is promised.</p>
+        {tab === "status" && <section className="card" data-tour="status"><p className="eyebrow">PLAIN LANGUAGE / MINIMUM NECESSARY</p><div className="section-heading"><h2>Case status & next step</h2><button className="secondary" disabled={busy} onClick={() => run("status")}>Run status check</button></div><p>{current.message}</p><p>Next owner: {current.next_owner}. No decision date is promised.</p>
           {authProfile === "showcase" ? <><h3>Built-in synthetic communication preview</h3><p>{draft}</p>
             <p className="small">Preview only: no free-text submission, saved outbox or external send in the public showcase.</p></> : <>
           <label>{current.missing_information_draft ? "Unsaved missing-information draft" : "Unsaved member-update draft"}<textarea value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} disabled={running} /></label>
@@ -451,12 +457,12 @@ export default function Workspace() {
           <div className="local-outbox"><h3>Your confirmed local drafts</h3><p className="small">Only drafts saved by your current persona are shown. No external delivery.</p>
             {operations.outbox.length ? operations.outbox.map(d => <details key={d.id}><summary>Draft #{d.id} / {dateTime(d.created)}</summary><p>{d.text}</p></details>) : <p className="empty">No confirmed local drafts for this persona.</p>}</div></>}
         </section>}
-        {tab === "activity" && <section className="card"><p className="eyebrow">PERSISTED, ROLE-FILTERED EVENTS</p><h2>Audit timeline</h2><ol className="timeline">{current.timeline.toReversed().map(t => <li key={t.id}><b>{t.event.replaceAll("_", " ")}</b>
+        {tab === "activity" && <section className="card" data-tour="activity"><p className="eyebrow">PERSISTED, ROLE-FILTERED EVENTS</p><h2>Audit timeline</h2><ol className="timeline">{current.timeline.toReversed().map(t => <li key={t.id}><b>{t.event.replaceAll("_", " ")}</b>
           <small>{new Date(t.created).toLocaleString()}{t.actor && ` · ${t.actor}`} · trace {t.trace}</small></li>)}</ol></section>}
       </>}
       {!opening && !current && <section className="card empty">Select an authorized case to inspect its record.</section>}
       </div>
-      <aside className="assistant card"><p className="eyebrow">BENEFITS IQ ASSISTANT</p><h2>Your review companion</h2>
+      <aside className="assistant card" data-tour="assistant"><p className="eyebrow">BENEFITS IQ ASSISTANT</p><h2>Your review companion</h2>
         <p>{session.mode === "live" ? "Configured model-backed chat. Capability data remains synthetic." : "Deterministic synthetic agent behind Microsoft Agent Framework + AG-UI. No live AI call."}</p>
         <div className="activity" role="status" aria-live="polite">{running ? <strong>Workflow in progress…</strong> : <strong>Ready for a human-led workflow</strong>}
           {activities.map((a, i) => <p key={`${i}-${a}`}>{a}</p>)}</div>

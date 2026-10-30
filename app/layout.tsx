@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./dashboard.css";
+import "./tour.css";
 
 export const metadata: Metadata = {
   title: "Benefits IQ | Human-led benefits review",

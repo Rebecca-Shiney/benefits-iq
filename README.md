@@ -34,6 +34,13 @@ they are not statistics computed from those twelve cases.
 
 ### A short demo route
 
+Use **Get to know your dashboard** at the top for a click-to-start guided tour.
+It highlights the current view's sections with simple explanations, Back/Next,
+Skip and keyboard controls. Reviewer tours open read-only tabs, not workflows;
+closing restores the starting tab. No case is changed and no model call is made.
+The tour is available in this source/local build; the October 29 public release
+predates it and needs a separately approved deployment refresh.
+
 1. Open **Clinical reviewer / Employer A**. Inspect case `SYN-CASE-001` and its
    versioned evidence, or `SYN-CASE-002` for an intake gap.
 2. Open **Evidence** to inspect citations. Chat can explain its permitted reads;

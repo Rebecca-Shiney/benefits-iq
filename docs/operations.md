@@ -192,6 +192,17 @@ application access. No deletion or successful cleanup test is implied here.
 
 ## Local development
 
+The **Get to know your dashboard** button starts an optional, role-specific
+walkthrough. Use Next/Back or the arrow keys, Escape/Close/Skip to leave, and the
+same button to restart. It skips unavailable sections and closes if the case,
+workspace, operations view or manually selected tab changes. Reviewer walkthroughs
+visit form/source/evidence/decision tabs without running or submitting anything;
+contact and employer steps never include reviewer-only panels. The native modal
+keeps keyboard focus in the guide, returns it to the button on close, uses instant
+scrolling (including reduced-motion use) and adapts to narrow screens. Closing
+restores the initial tab unless the dashboard context changed. No tour progress,
+case edits, model requests or audit records are saved.
+
 See the README for dependency installation and the loopback launcher. It uses
 SQLite, a freshly generated shared service credential, signed HTTP-only strict
 SameSite demo cookies and disabled telemetry. These are not Entra credentials or
