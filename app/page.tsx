@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { CaseChat } from "@/components/case-chat";
 import { DashboardTour } from "@/components/dashboard-tour";
+import { UseCaseGuide } from "@/components/use-case-guide";
 import { ActivitySchema, api, type Aggregate, type Case, type CaseOperations, type Field, type Session, type Task, type TaskKind, type Workbench } from "@/lib/contracts";
 import { dateTime, Documents, label, Metrics, Overview, TaskPanel } from "@/components/operations";
 import { authorizationHeaders, initializeAuth, signIn, signOut } from "@/lib/browser-auth";
@@ -30,6 +31,8 @@ export default function Workspace() {
   const [queueLoading, setQueueLoading] = useState(false);
   const [opening, setOpening] = useState(false);
   const [view, setView] = useState("cases");
+  const [showUseCase, setShowUseCase] = useState(false);
+  const sectionId = useId();
   const [tab, setTab] = useState("overview");
   const [owner, setOwner] = useState("unassigned");
   const [priority, setPriority] = useState("standard");
@@ -119,7 +122,7 @@ export default function Workspace() {
   async function login() {
     ++caseRequest.current;
     setRunning(true); setError(""); setCurrent(null); setSession(null); setAggregate(null); setWorkbench(null); setOperations(null);
-    setView("cases"); setTab("overview"); setFilter(""); setStatusFilter("all"); setPriorityFilter("all"); setOwnerFilter("all");
+    setView("cases"); setShowUseCase(false); setTab("overview"); setFilter(""); setStatusFilter("all"); setPriorityFilter("all"); setOwnerFilter("all");
     filtersRef.current = new URLSearchParams({ search: "", state: "all", priority: "all", owner: "all", sort }).toString();
     try {
       if (authProfile === "starter") {
@@ -137,7 +140,7 @@ export default function Workspace() {
     try { await signOut(); }
     catch { setError("Entra sign-out did not finish. Close this tab to discard its in-memory tokens."); }
     finally {
-      setSession(null); setCurrent(null); setOperations(null); setWorkbench(null); setAggregate(null);
+      setSession(null); setShowUseCase(false); setCurrent(null); setOperations(null); setWorkbench(null); setAggregate(null);
       setRenewals([]); setFields({}); setDraft(""); setReason(""); setRunning(false);
     }
   }
@@ -307,7 +310,7 @@ export default function Workspace() {
       <div className="header-note">BENEFITS OPERATIONS <span>/</span> HUMAN-LED REVIEW</div>
       <DashboardTour context={{
         session: session?.id || null, role: session?.role || null, demo: authProfile !== "starter",
-        view, tab, caseId: !opening && operations ? current?.id || null : null, busy, ready: authProfile !== null,
+        view: showUseCase ? "use-case" : view, tab, caseId: !opening && operations ? current?.id || null : null, busy, ready: authProfile !== null,
         chat: !!session?.features.chat, intake: !!session?.features.intake, evidence: !!session?.features.evidence, renewal: !!session?.features.renewal,
       }} onNavigate={setTab} />
       <span className="pill synthetic">SYNTHETIC DATA ONLY</span>
@@ -349,6 +352,27 @@ export default function Workspace() {
         <div><b>02</b><h3>Prepare evidence</h3><p>Versioned sources, explicit gaps.</p></div><div><b>03</b><h3>Decide with context</h3><p>Your decision. Recorded and traceable.</p></div></div></section>}
     {session && <div className="workspace-meta"><strong>{session.role === "reviewer" ? "Clinical review workspace" : session.role === "contact" ? "Contact centre" : "Employer insights"}</strong>
       <span>{session.id} / {session.employer} / {session.profile !== "local" && session.profile ? "Azure-native synthetic sources / regional model" : session.mode === "live" ? "Configured model chat" : "Deterministic synthetic agents"}</span></div>}
+    {session && <>
+      <div className="workbench-nav dashboard-sections" role="tablist" aria-label="Dashboard information"
+        onKeyDown={event => {
+          if (busy || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === "Home" ? false : event.key === "End" ? true : !showUseCase;
+          setShowUseCase(next);
+          event.currentTarget.querySelector<HTMLButtonElement>(`[data-section="${next ? "guide" : "dashboard"}"]`)?.focus();
+        }}>
+        {([["dashboard", "Your dashboard", false], ["guide", "Understand the use case", true]] as const).map(([name, title, guide]) =>
+          <button key={name} id={`${sectionId}-tab-${name}`} role="tab" data-section={name}
+            aria-controls={`${sectionId}-panel-${name}`} aria-selected={showUseCase === guide} tabIndex={showUseCase === guide ? 0 : -1}
+            disabled={busy} onClick={() => setShowUseCase(guide)}>{title}</button>
+        )}
+      </div>
+      <div id={`${sectionId}-panel-guide`} role="tabpanel" aria-labelledby={`${sectionId}-tab-guide`} tabIndex={0} hidden={!showUseCase}>
+        <UseCaseGuide />
+      </div>
+    </>}
+    <div id={`${sectionId}-panel-dashboard`} role={session ? "tabpanel" : undefined}
+      aria-labelledby={session ? `${sectionId}-tab-dashboard` : undefined} tabIndex={session ? 0 : undefined} hidden={showUseCase}>
     {aggregate && <section className="card" data-tour="portfolio"><p className="eyebrow">PORTFOLIO VIEW / AGGREGATES ONLY</p><h2>Specialty utilization trends</h2>
       <p>This separate fictional portfolio is not computed from the individual workflow members.</p>
       <div className="trend-grid">{aggregate.rows.map(r => <article className="trend" key={r.period}><h3>{r.period}</h3>
@@ -472,6 +496,7 @@ export default function Workspace() {
           {showChat && <CaseChat key={`${session.id}-${current.id}`} caseId={current.id} presetOnly={authProfile === "showcase"} />}</>}
       </aside>
     </div>}</>}
+    </div>
     <footer>BENEFITS IQ <span>Independent October SE Build demo · Synthetic fixtures · No production integrations</span></footer>
   </main>;
 }
