@@ -1,0 +1,28 @@
+flowchart TB
+    accTitle: Benefits IQ deployed architecture
+    accDescr: Anonymous visitors reach the public Next.js proxy. Managed identity protects the internal Python service and Canadian data services; SQL uses a private endpoint. Build workers have unverified regional placement.
+    Browser["Browser<br/>Anonymous views"] -->|HTTPS| Web
+
+    subgraph Canadian["Canadian workload data plane"]
+        subgraph VNet["Canada East VNet and Container Apps"]
+            Web["Public Next.js<br/>Proxy and chat"] -->|"Exact web MI token"| API
+            API["Internal Python<br/>MAF / AG-UI"] --> PE["SQL private endpoint<br/>Private DNS"]
+            Seed["Manual setup job<br/>Seed / probe"] -.-> PE
+        end
+        PE -->|"TLS and managed identity"| SQL[("Azure SQL<br/>Cases and audit")]
+        API --> Search["AI Search<br/>Criteria"]
+        API -->|"Fixture PDFs"| OCR["Document Intelligence<br/>Fixture OCR"]
+        API --> Model["Regional OpenAI<br/>Canada East Standard"]
+        API --> Logs["Azure Monitor<br/>Metadata only"]
+        Seed -.-> Search
+    end
+
+    Identity["Entra / MI<br/>Nonregional"] -.-> Web
+    Identity -.-> API
+
+    subgraph Build["Build plane: worker location unverified"]
+        ACR["ACR Basic<br/>Managed builds"]
+    end
+    ACR -.->|"MI image pull"| Web
+    ACR -.->|"MI image pull"| API
+    ACR -.->|"MI image pull"| Seed
