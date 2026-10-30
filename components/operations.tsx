@@ -10,7 +10,7 @@ export function dateTime(value: string) {
 
 export function Metrics({ data }: { data: Workbench }) {
   const s = data.summary;
-  return <section className="metrics" aria-label="Authorized workload metrics">
+  return <section className="metrics" data-tour="metrics" aria-label="Authorized workload metrics">
     {[
       { title: "Active requests", value: s.active, detail: `${s.total} authorized records`, tone: "teal" },
       { title: "Past service target", value: s.overdue, detail: `${s.due_soon} due within 24 hours`, tone: "amber" },
@@ -25,7 +25,7 @@ export function TaskPanel({ tasks, reviewer, busy, onCreate, onUpdate }: {
   onCreate: (kind: TaskKind) => void; onUpdate: (task: Task, state: Task["state"]) => void;
 }) {
   const [kind, setKind] = useState<TaskKind>("member_follow_up");
-  return <section className="card task-panel"><div className="section-heading"><div><p className="eyebrow">TRACKED HANDOFFS</p><h2>Tasks & follow-ups</h2></div>
+  return <section className="card task-panel" data-tour="tasks"><div className="section-heading"><div><p className="eyebrow">TRACKED HANDOFFS</p><h2>Tasks & follow-ups</h2></div>
     <span className="count">{tasks.filter(t => t.state !== "done").length} open</span></div>
     <p>Team-owned local tasks. Completing one does not change a clinical outcome or send a message.</p>
     <div className="task-create"><label htmlFor="task-kind">New handoff<select id="task-kind" value={kind} disabled={busy} onChange={e => setKind(e.target.value as TaskKind)}>
@@ -51,7 +51,7 @@ export function Overview({ current, ops, reviewer, busy, owner, priority, setOwn
   setOwner: (value: string) => void; setPriority: (value: string) => void; onAssign: () => void;
   onNavigate: (tab: string) => void;
 }) {
-  return <div className="overview-grid">
+  return <div className="overview-grid" data-tour="overview">
     <section className="card"><p className="eyebrow">REQUEST SNAPSHOT</p><h2>{current.expiry ? "Renewal authorization" : "New authorization"}</h2>
       <dl className="context-list"><div><dt>Employer</dt><dd>{ops.employer.name}</dd></div>
         <div><dt>Region</dt><dd>{ops.employer.region}</dd></div>
@@ -94,7 +94,7 @@ export function Overview({ current, ops, reviewer, busy, owner, priority, setOwn
 }
 
 export function Documents({ ops }: { ops: CaseOperations }) {
-  return <section className="card"><p className="eyebrow">SOURCE REGISTER / LOCAL FIXTURES</p><h2>Documents & source freshness</h2>
+  return <section className="card" data-tour="documents"><p className="eyebrow">SOURCE REGISTER / LOCAL FIXTURES</p><h2>Documents & source freshness</h2>
     <p>Inspect the actual structured form, policy passages and prior-therapy fixtures used by this case. No uploaded files, OCR service or production connector is represented.</p>
     <div className="source-list">{ops.documents?.map(doc => <article key={doc.id}><div className="section-heading"><div><small>{doc.kind}</small><h3>{doc.title}</h3></div>
       <span className={`state ${doc.status}`}>{label(doc.status)}</span></div>
