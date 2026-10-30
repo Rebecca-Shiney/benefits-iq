@@ -14,6 +14,7 @@ type TourContext = {
   chat: boolean;
   intake: boolean;
   evidence: boolean;
+  renewal: boolean;
 };
 type Step = { target: string; title: string; text: string; tab?: string };
 type Walkthrough = { steps: Step[]; index: number; direction: 1 | -1; key: string; initialTab: string; expectedTab: string };
@@ -46,12 +47,12 @@ function stepsFor(context: TourContext): Step[] {
     { target: "metrics", title: "Your workload at a glance", text: "See active requests, items past their internal target, review readiness and open tasks. These are synthetic operational counts, not promised decision times." },
   ];
   if (context.view !== "cases") return [...steps,
-    { target: "operations-nav", title: "Choose an operations view", text: "Move between the case queue and team tasks. Reviewers may also see Renewal watch. Switching views does not change a case or extend coverage." },
+    { target: "operations-nav", title: "Choose an operations view", text: `Move between the case queue and team tasks.${context.role === "reviewer" && context.renewal ? " Renewal watch shows upcoming expiries." : ""} Switching views does not change a case or extend coverage.` },
     context.view === "renewals"
       ? { target: "renewals", title: "Prepare for upcoming renewals", text: "This list shows recorded expiries in the next 30 days. Open a renewal to inspect its case; nothing is renewed automatically." }
       : { target: "team-tasks", title: "Keep handoffs visible", text: "See the responsible team, due date and task status. Open a case to manage a task yourself. A task is not a clinical outcome or an external message." },
   ];
-  steps.push({ target: "queue", title: "Find a case to work on", text: "Search and filter the selected group's cases, then choose one to inspect. Team tasks and, for reviewers, Renewal watch are available above the queue." });
+  steps.push({ target: "queue", title: "Find a case to work on", text: `Search and filter the selected group's cases, then choose one to inspect. Use Team tasks${context.role === "reviewer" && context.renewal ? " or Renewal watch" : ""} above the queue for other work.` });
   if (context.caseId) {
     if (context.role === "reviewer" && ["overview", "intake", "documents", "evidence", "decision"].includes(context.tab)) {
       if (context.intake) steps.push({ target: "intake", tab: "intake", title: "Check intake and Member 360", text: "Review the member snapshot and form fields. Missing values or low confidence need a human check against the source. This tour does not run intake or save corrections." });
@@ -86,7 +87,7 @@ export function DashboardTour({ context, onNavigate }: { context: TourContext; o
   const card = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const titleId = useId(), descriptionId = useId();
-  const key = JSON.stringify([context.session, context.role, context.caseId, context.view, context.busy, context.chat, context.intake, context.evidence]);
+  const key = JSON.stringify([context.session, context.role, context.caseId, context.view, context.busy, context.demo, context.ready, context.chat, context.intake, context.evidence, context.renewal]);
   const active = tour !== null;
 
   function finish(message = "Tour closed. You can restart from Get to know your dashboard.", restore = true) {

@@ -308,7 +308,7 @@ export default function Workspace() {
       <DashboardTour context={{
         session: session?.id || null, role: session?.role || null, demo: authProfile !== "starter",
         view, tab, caseId: !opening && operations ? current?.id || null : null, busy, ready: authProfile !== null,
-        chat: !!session?.features.chat, intake: !!session?.features.intake, evidence: !!session?.features.evidence,
+        chat: !!session?.features.chat, intake: !!session?.features.intake, evidence: !!session?.features.evidence, renewal: !!session?.features.renewal,
       }} onNavigate={setTab} />
       <span className="pill synthetic">SYNTHETIC DATA ONLY</span>
     </header>

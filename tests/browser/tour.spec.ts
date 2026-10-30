@@ -189,12 +189,13 @@ test("disabled features and absent case data do not create phantom tour steps", 
   await page.route("**/api/backend/session", async route => {
     const response = await route.fetch();
     const data = await response.json();
-    await route.fulfill({ response, json: { ...data, features: { ...data.features, chat: false, intake: false, evidence: false } } });
+    await route.fulfill({ response, json: { ...data, features: { ...data.features, chat: false, intake: false, evidence: false, renewal: false } } });
   });
   await login(page);
   await start(page).click();
   for (const [index, target] of ["workspace", "metrics", "queue", "documents", "decision"].entries()) {
     await expectStep(page, target, index + 1, 5);
+    await expect(guide(page)).not.toContainText("Renewal watch");
     await guide(page).getByRole("button", { name: index === 4 ? "Finish" : "Next", exact: true }).click();
   }
   await page.route("**/api/backend/workbench?**", route => route.fulfill({
