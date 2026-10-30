@@ -2,7 +2,7 @@
 
 ## Status and approval boundary
 
-**Ready for Validation: October 30 guided-tour refresh.** The user approved
+**Validated and deployed: October 30 guided-tour refresh.** The user approved
 integrating reviewed source `1a0a3ae792f99a7c9a17332cf2de2cdc7694c02e`
 into main and refreshing the existing public showcase, including the normal
 temporary private-ingress downtime. This is a frontend tour/documentation
@@ -12,12 +12,15 @@ region, Fabric operation or destructive cleanup. Preserve the retained
 records. The tour itself must not write cases, submit decisions, send messages
 or invoke a model. Rebuild/scan and repeat the existing MI/private SQL/source/
 private-public acceptance gates before reopening frontend ingress; then verify
-the actual public role-aware tour and record dated evidence. Until those gates
-pass, the tour is prepared locally, not deployed. Local production build,
+the actual public role-aware tour and record dated evidence. Those execution
+gates completed at `2026-10-30T15:22:07Z`, followed by public tour browser
+acceptance at `15:22:39Z`; the frontend is public, Python internal and SQL PNA
+Disabled/Entra-only. Runtime source is merged PR #3,
+`132f707549f694bf7f2eba03ec94dbb3a9f653ad`. Local production build,
 typecheck, 27 browser checks and 21 request/stream checks passed; no new
 dependencies were added and the package audit reported zero known advisories.
 
-The following is the last completed rollout, retained as historical evidence:
+The preceding completed rollout is retained below as historical evidence:
 
 **Validated and deployed: the stricter required-read-tool revision completed all image/private/public gates at 2026-10-29T18:17:51Z, followed by actual public browser acceptance. Only Next.js ingress is public; Python is internal and SQL PNA remains Disabled/Entra-only. Genuine Canadian model/tool streaming, scoped Search/fresh OCR, SQL permissions and preserved synthetic workflow evidence are verified. No clinical decision was submitted by deployment/browser automation. Enterprise and end-user authenticated profiles remain future opt-in, not deployed integrations. No Fabric change, policy bypass or deletion occurred.**
 
@@ -802,6 +805,87 @@ accepted the allowance rather than a hard ceiling. Additional uptime/cleanup
 policies require owner approval. Starter never resumes or changes capacity.
 
 ## 7. Validation Proof
+
+### Guided-tour refresh prerequisite validation, 2026-10-30 UTC
+
+Source: merged PR #3, `132f707549f694bf7f2eba03ec94dbb3a9f653ad`.
+The runtime, infrastructure, dependency and browser-test files are byte-identical
+to reviewed tour source `1a0a3ae792f99a7c9a17332cf2de2cdc7694c02e`.
+No Azure resource write or ingress change was performed during this validation.
+
+- [x] All prerequisite validation checks pass for the approved staged refresh:
+  - [x] Azure CLI/authentication: the normal read-only preflight verified an enabled interactive account in the exact retained subscription/tenant, containerapp extension, immutable environment ownership, scanner and clean committed allowlisted build inputs. No static application credential was used.
+  - [x] Bicep compilation: `python scripts\deploy.py --subscription 85489118-9695-41ac-ba0f-e14ba8837c91 --environment benefits-iq` compiled all five templates and returned `read_only_preflight_complete`.
+  - [x] Provider validation: fresh subscription-scope foundation and group-scope data/network/private API/private web `az deployment ... validate --validation-level Provider` calls all Succeeded, with no error.
+  - [x] What-if preview: the corresponding five `what-if --validation-level Provider --no-pretty-print --result-format ResourceIdOnly` calls all Succeeded and contained no Delete. The three foundation role-ID Unsupported entries remain preview limitations, not evidence that live role access passed. Local generated evidence: `.azure/tour-validation-20261030.json`, completed `2026-10-30T14:44:46Z`.
+  - [x] Build route/source prerequisites: both existing multi-stage Dockerfiles and pinned lockfiles were checked; the allowlist includes the new tour TSX/CSS and excludes attachments, credentials and local state. The already-approved standard ACR managed-build route replaces unavailable local Docker. New final images have **not** yet been built/scanned: those remain mandatory execution gates, before hosting/public exposure, rather than a claimed local Docker result.
+  - [x] Azure Policy: fresh fail-closed ancestor-inclusive assignment/initiative discovery and unconditional private-only SQL checks passed; Provider validation also passed. No policy exemption or public SQL fallback.
+  - [x] Frontend build/guards: fresh `npm audit`, `npm run build`, `npm run typecheck` and the two Node request/stream suites passed; zero known npm vulnerabilities and 21 passing Node checks. The unchanged reviewed source already passed all 27 browser checks, including 12 tour tests.
+  - [x] Static role verification: unchanged resource-scoped AcrPull for web/API/setup; only API has Search read, OCR and regional OpenAI data roles; setup retains Search maintenance and SQL bootstrap access. Web receives no data-service role. Runtime SQL remains a separately constrained principal. Exact MI caller ACL and live roles/permissions remain execution proofs, not inferred from template review.
+
+At validation time, retained state existed, no deployment lock was present and
+baseline readback showed the old web digest with public ingress enabled. The
+prerequisite validation above did not itself prove deployment or the live tour;
+the subsequent execution evidence below does. No clinical decision is an
+acceptance action.
+
+### Guided-tour deployment and public-browser acceptance, 2026-10-30
+
+The normal full `scripts\deploy.py --subscription
+85489118-9695-41ac-ba0f-e14ba8837c91 --environment benefits-iq --deploy`
+entry completed at **2026-10-30T15:22:07Z**, returning `showcase_deployed`.
+Build input was committed main source
+`132f707549f694bf7f2eba03ec94dbb3a9f653ad`; only this plan's progress notes
+were dirty, and they are excluded from the build context. No runtime source,
+dependency, infrastructure or authentication change was added during execution.
+
+| Gate | Actual evidence |
+|---|---|
+| API managed build / final scan | ACR `cwh`; `sha256:807bf20c95571720089c29e58b269c9150107304f09d67420319df98c23faade` |
+| Web managed build / final scan | ACR `cwj`; `sha256:d1220f340cf13ffd9fbad405b8af2670f1796bf0a9fadd0dcff6a235031681c4` |
+| Exact MI positive / four-negative proof | `p-biq-benefits-iq-bb2168f95c9d-h9maod0`; token not exposed |
+| Private SQL DNS / MI login | `n-q-biq-benefits-iq-bb2168f95c9d-ajzjct8`; one resolved address, schema not mutated |
+| Preserving synthetic setup | `n-s-biq-benefits-iq-bb2168f95c9d-xgiv18y`; 17 sources, 12 documents, 3 criteria, 6 separate aggregate cells |
+| Runtime SQL/Search/fresh OCR | `n-r-biq-benefits-iq-bb2168f95c9d-t5fe0i1`; case not mutated |
+| Private model/workflow acceptance | `n-v-biq-benefits-iq-bb2168f95c9d-zn5z30p` |
+| Post-public repeated acceptance | `n-v-biq-benefits-iq-bb2168f95c9d-4vmuerr` |
+
+Both image build/test/scan gates passed without waiver: exact digest, OS and
+language coverage, no blocking language vulnerability/secret or High/Critical OS
+finding. The two acceptance receipts both retain the protocol status
+`private_cloud_acceptance_complete`; their saved state keys/executions distinguish
+private from post-public runs. Both proved real MAF/AG-UI streaming with the
+required case-bound read tools, saved evidence, selected-view shapes and direct
+upload/send/create rejection. Both explicitly recorded
+`clinical_decision_submitted=false` and `workflow_write_exercised=false`:
+existing versioned workflow evidence was preserved, not falsely reported as a
+new acceptance write.
+
+Actual public browser acceptance completed at **2026-10-30T15:22:39Z**:
+opt-in landing, reviewer eight-step Next/Back/Finish/close/restart, contact and
+both employer walkthroughs, focus restoration/containment, Arrow/Escape/Tab/
+Shift+Tab, reduced motion and widths 390/320. The reviewer case/audit snapshot
+was equal before/after desktop and mobile tours. The observed tours issued
+**zero non-GET or chat requests**. No workflow button, model call, clinical
+decision or external send was used for tour acceptance.
+
+Final cloud readback: frontend external=true on revision
+`web-biq-benefits-iq-bb2168f95c9d--0000012`, exact web digest above;
+Python external=false on the API digest above; SQL PNA Disabled, TLS 1.2 and
+Entra-only=true. Actual resource-scoped web/API/setup RBAC matches static review:
+web only AcrPull; API also Search read/OCR/OpenAI data roles; setup retains Search
+maintenance and existing SQL bootstrap access. No deletion, new paid service,
+policy exemption, Fabric operation or user-authentication change occurred.
+The single-run lock was released and retained state saved.
+
+Public URL:
+https://web-biq-benefits-iq-bb2168f95c9d.kindground-2f9b9bf8.canadaeast.azurecontainerapps.io
+
+Shared live browser: `benefits-iq-cloud-tour`. Session review artifacts:
+`files/tour-review/cloud-tour-desktop.png`,
+`files/tour-review/cloud-tour-mobile.png` and
+`files/tour-review/cloud-tour-acceptance.json`.
+These session files are not required deployment inputs or committed attachments.
 
 This section preserves staged execution history. Later dated acceptance below
 supersedes earlier pending statements; it does not retroactively turn local tests

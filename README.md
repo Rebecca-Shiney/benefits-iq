@@ -38,8 +38,8 @@ Use **Get to know your dashboard** at the top for a click-to-start guided tour.
 It highlights the current view's sections with simple explanations, Back/Next,
 Skip and keyboard controls. Reviewer tours open read-only tabs, not workflows;
 closing restores the starting tab. No case is changed and no model call is made.
-The tour is available in this source/local build; the October 29 public release
-predates it and needs a separately approved deployment refresh.
+The tour was deployed and verified in the public showcase on **October 30,
+2026**, including the contact-centre and employer views, mobile and keyboard use.
 
 1. Open **Clinical reviewer / Employer A**. Inspect case `SYN-CASE-001` and its
    versioned evidence, or `SYN-CASE-002` for an intake gap.
@@ -198,18 +198,23 @@ identity/image proof, before data/app services.
 
 ### What has actually been verified?
 
-The full same-environment rollout completed on **October 29, 2026 at 18:17:51
-UTC**, from runtime source `eb6369a`. Real proofs cover MI issuance/denials,
+The latest same-environment rollout completed on **October 30, 2026 at 15:22:07
+UTC**, from merged runtime source `132f707`. Real proofs cover MI issuance/denials,
 private SQL access and permissions, seeding, Search, fresh OCR, durable evidence,
-and required-read-tool model streams before and after public exposure. Browser
-checks cover grounded answers, view shapes, keyboard/mobile use and cancel/retry.
+and required-read-tool model streams before and after public exposure. Actual
+public browser checks verified the guided tour across reviewer/contact/employer
+views, Next/Back/Finish/close/restart, keyboard/mobile controls and unchanged
+case/audit snapshots with no write or chat request during tours.
 Deployment/browser automation submitted **no clinical decision**.
 
-The recorded Python run had **295 passed / 11 optional local HTTP skips**;
-the full npm audit reported **zero known vulnerabilities**. Actual final-image
-scan gates passed separately. These are dated observations, not a security or
-accessibility certification. Detailed job receipts, digests and recovery history
-are in the [deployment evidence](.azure/deployment-plan.md#final-required-tool-deployment-and-browser-acceptance-2026-10-29).
+The tour revision passed **27 local browser checks** and **21 Node request/stream
+checks**, production build and typecheck. The fresh full npm audit reported
+**zero known vulnerabilities**; both actual final-image build/test/scan gates
+passed separately. The earlier full Python run recorded 295 passed / 11 optional
+local HTTP skips; it is not a new whole-suite run for this frontend change.
+These are dated observations, not a security or accessibility certification.
+Detailed receipts, digests and historical proof are in the
+[deployment evidence](.azure/deployment-plan.md#guided-tour-deployment-and-public-browser-acceptance-2026-10-30).
 
 ## Safety and limitations
 
